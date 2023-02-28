@@ -1,0 +1,63 @@
+syntax = "proto3";
+package ethermint.evm.v1;
+
+import "gogoproto/gogo.proto";
+import "google/api/annotations.proto";
+
+option go_package = "github.com/evmos/ethermint/x/evm/types";
+
+// Op defines the evm operation Op service.
+service Op {
+  // EthereumOp defines a method submitting Ethereum operations.
+  rpc EthereumOp(EthereumOp) returns (EthereumOpResponse) {
+    option (google.api.http).post = "/ethermint/evm/v1/ethereum_op";
+  };
+}
+
+// Operation is a structure that describes a transaction to be sent on behalf of a user. To avoid confusion, it is not
+// named “transaction”
+message Operation {
+  option (gogoproto.goproto_getters) = false;
+  // sender: the account making the operation
+  string sender = 1;
+  // nonce: anti-replay parameter; also used as the salt for first-time account creation
+  uint64 nonce = 2;
+  // init_code: the initCode of the account (needed if and only if the account is not yet on-chain and needs to be
+  // created)
+  bytes init_code = 3;
+  // call_data: the data to pass to the sender during the main execution call
+  bytes call_data = 4;
+  // call_gas_limit: the amount of gas to allocate the main execution call
+  uint64 call_gas_limit = 5;
+  // verification_gas_limit: the amount of gas to allocate for the verification step
+  uint64 verification_gas_limit = 6;
+  // pre_verification_gas_limit: the amount of gas to pay for to compensate the bundler for pre-verification execution
+  // and calldata
+  uint64 pre_verification_gas = 7;
+  // max_fee_per_gas: maximum fee per gas (similar to EIP-1559 max_fee_per_gas)
+  uint64 max_fee_per_gas = 8;
+  // max_priority_fee_per_gas: maximum priority fee per gas (similar to EIP-1559 max_priority_fee_per_gas)
+  uint64 max_priority_fee_per_gas = 9;
+  // paymaster_and_data: address of paymaster sponsoring the transaction, followed by extra data to send to the
+  // paymaster (empty for self-sponsored transaction)
+  bytes paymaster_and_data = 10;
+  // signature: data passed into the account along with the nonce during the verification step
+  bytes signature = 11;
+}
+
+// EthereumOp encapsulates an Ethereum operation as an SDK message.
+message EthereumOp {
+  option (gogoproto.goproto_getters) = false;
+  // operation: user operation
+  Operation operation = 1 [(gogoproto.nullable) = false];
+  // entry_point: address of a singleton contract to execute bundles of Operations
+  string entry_point = 2;
+}
+
+// EthereumOpResponse defines the Msg/EthereumOp response type.
+message EthereumOpResponse {}
+
+// ExtensionOptionsEthereumOp is an extension option for ethereum transactions
+message ExtensionOptionsEthereumOp {
+  option (gogoproto.goproto_getters) = false;
+}

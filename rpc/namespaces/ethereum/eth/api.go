@@ -110,6 +110,8 @@ type EthereumAPI interface {
 	// eth_getWork (on Ethereum.org)
 	// eth_submitWork (on Ethereum.org)
 	// eth_submitHashrate (on Ethereum.org)
+
+	SendUserOperation(args evmtypes.MsgEthereumOp) (common.Hash, error)
 }
 
 var _ EthereumAPI = (*PublicAPI)(nil)
@@ -510,4 +512,8 @@ func (e *PublicAPI) GetPendingTransactions() ([]*rpctypes.RPCTransaction, error)
 	}
 
 	return result, nil
+}
+
+func (e *PublicAPI) SendUserOperation(args evmtypes.MsgEthereumOp) (common.Hash, error) {
+	return e.backend.SendUserOperation(args)
 }

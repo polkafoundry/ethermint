@@ -1,9 +1,11 @@
 package encoding
 
 import (
+	"github.com/cosmos/cosmos-sdk/client"
 	amino "github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/simapp/params"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/x/auth/tx"
 
@@ -28,4 +30,30 @@ func MakeConfig(mb module.BasicManager) params.EncodingConfig {
 	enccodec.RegisterInterfaces(encodingConfig.InterfaceRegistry)
 	mb.RegisterInterfaces(encodingConfig.InterfaceRegistry)
 	return encodingConfig
+}
+
+type OpConfig struct {
+	OpEncodingConfig client.OpEncodingConfig
+}
+
+type opEncodingConfig struct {
+	opEncoder sdk.OpEncoder
+	opDecoder sdk.OpDecoder
+}
+
+func (ec opEncodingConfig) OpEncoder() sdk.OpEncoder {
+	return ec.opEncoder
+}
+
+func (ec opEncodingConfig) OpDecoder() sdk.OpDecoder {
+	return ec.opDecoder
+}
+
+func MakeOpConfig() OpConfig {
+	return OpConfig{
+		OpEncodingConfig: &opEncodingConfig{
+			opEncoder: sdk.DefaultOpEncoder(),
+			opDecoder: sdk.DefaultOpDecoder(),
+		},
+	}
 }

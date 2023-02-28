@@ -161,6 +161,18 @@ func (b *Backend) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) {
 	return txHash, nil
 }
 
+func (b *Backend) SendUserOperation(args evmtypes.MsgEthereumOp) (common.Hash, error) {
+	opBytes, err := b.clientCtx.OpConfig.OpEncoder()(&args)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	_, err = b.clientCtx.BroadcastOpSync(opBytes)
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return common.Hash{}, nil
+}
+
 // SetTxDefaults populates tx message with default values in case they are not
 // provided on the args
 func (b *Backend) SetTxDefaults(args evmtypes.TransactionArgs) (evmtypes.TransactionArgs, error) {

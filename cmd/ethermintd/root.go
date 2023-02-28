@@ -50,6 +50,7 @@ const EnvPrefix = "ETHERMINT"
 // main function.
 func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 	encodingConfig := encoding.MakeConfig(app.ModuleBasics)
+	opEncodingConfig := encoding.MakeOpConfig()
 	initClientCtx := client.Context{}.
 		WithCodec(encodingConfig.Codec).
 		WithInterfaceRegistry(encodingConfig.InterfaceRegistry).
@@ -60,7 +61,8 @@ func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
 		WithBroadcastMode(flags.BroadcastBlock).
 		WithHomeDir(app.DefaultNodeHome).
 		WithKeyringOptions(hd.EthSecp256k1Option()).
-		WithViper(EnvPrefix)
+		WithViper(EnvPrefix).
+		WithOpConfig(opEncodingConfig.OpEncodingConfig)
 
 	eip712.SetEncodingConfig(encodingConfig)
 

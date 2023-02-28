@@ -25,8 +25,8 @@ import (
 )
 
 var (
-	_ module.AppModule      = AppModule{}
-	_ module.AppModuleBasic = AppModuleBasic{}
+	_ module.ExtendedAppModule = AppModule{}
+	_ module.AppModuleBasic    = AppModuleBasic{}
 )
 
 // AppModuleBasic defines the basic application module used by the evm module.
@@ -95,6 +95,10 @@ type AppModule struct {
 	AppModuleBasic
 	keeper *keeper.Keeper
 	ak     types.AccountKeeper
+}
+
+func (am AppModule) RegisterOpServices(cfg module.OpConfigurator) {
+	types.RegisterOpMsgServer(cfg.OpServer(), am.keeper)
 }
 
 // NewAppModule creates a new AppModule object

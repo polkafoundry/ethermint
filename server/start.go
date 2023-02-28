@@ -368,7 +368,9 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 	// service if API or gRPC or JSONRPC is enabled, and avoid doing so in the general
 	// case, because it spawns a new local tendermint RPC client.
 	if (config.API.Enable || config.GRPC.Enable || config.JSONRPC.Enable || config.JSONRPC.EnableIndexer) && tmNode != nil {
-		clientCtx = clientCtx.WithClient(local.New(tmNode))
+		l := local.New(tmNode)
+		clientCtx = clientCtx.WithClient(l)
+		clientCtx = clientCtx.WithExtendedClient(l)
 
 		app.RegisterTxService(clientCtx)
 		app.RegisterTendermintService(clientCtx)
