@@ -67,6 +67,12 @@ if [[ $1 == "pending" ]]; then
   fi
 fi
 
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i '' 's/^timeout_commit = .*/timeout_commit = "1s"/g' $HOME/.ethermintd/config/config.toml
+  else
+    sed -i 's/^timeout_commit = .*/timeout_commit = "1s"/g' $HOME/.ethermintd/config/config.toml
+fi
+
 # Allocate genesis accounts (cosmos formatted addresses)
 ethermintd add-genesis-account $KEY 100000000000000000000000000aphoton --keyring-backend $KEYRING
 

@@ -42,7 +42,7 @@ message Operation {
   // paymaster (empty for self-sponsored transaction)
   bytes paymaster_and_data = 10;
   // signature: data passed into the account along with the nonce during the verification step
-  bytes signature = 11;
+  bytes signature = 11 [(gogoproto.moretags) = "rlp:\"-\""];
 }
 
 // EthereumOp encapsulates an Ethereum operation as an SDK message.
@@ -52,6 +52,14 @@ message EthereumOp {
   Operation operation = 1 [(gogoproto.nullable) = false];
   // entry_point: address of a singleton contract to execute bundles of Operations
   string entry_point = 2;
+  // chain_id of the destination EVM chain
+  string chain_id = 3 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
+    (gogoproto.customname) = "ChainID",
+    (gogoproto.jsontag) = "chainID"
+  ];
+  string hash = 4 [(gogoproto.moretags) = "rlp:\"-\""];
+  string bundler = 5 [(gogoproto.moretags) = "rlp:\"-\""];
 }
 
 // EthereumOpResponse defines the Msg/EthereumOp response type.

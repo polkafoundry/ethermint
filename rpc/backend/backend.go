@@ -124,7 +124,7 @@ type EVMBackend interface {
 	TraceTransaction(hash common.Hash, config *evmtypes.TraceConfig) (interface{}, error)
 	TraceBlock(height rpctypes.BlockNumber, config *evmtypes.TraceConfig, block *tmrpctypes.ResultBlock) ([]*evmtypes.TxTraceResult, error)
 
-	SendUserOperation(args evmtypes.MsgEthereumOp) (common.Hash, error)
+	SendUserOperation(operation evmtypes.Operation, entryPoint string) (common.Hash, error)
 }
 
 var _ BackendI = (*Backend)(nil)

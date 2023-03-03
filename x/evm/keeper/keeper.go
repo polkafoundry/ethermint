@@ -9,6 +9,7 @@ import (
 	storetypes "github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -61,6 +62,8 @@ type Keeper struct {
 
 	// evm constructor function
 	evmConstructor evm.Constructor
+
+	entryPointContractABI abi.ABI
 }
 
 // NewKeeper generates new evm module keeper
@@ -88,17 +91,18 @@ func NewKeeper(
 
 	// NOTE: we pass in the parameter space to the CommitStateDB in order to use custom denominations for the EVM operations
 	return &Keeper{
-		cdc:               cdc,
-		paramSpace:        paramSpace,
-		accountKeeper:     ak,
-		bankKeeper:        bankKeeper,
-		stakingKeeper:     sk,
-		feeMarketKeeper:   fmk,
-		storeKey:          storeKey,
-		transientKey:      transientKey,
-		customPrecompiles: customPrecompiles,
-		evmConstructor:    evmConstructor,
-		tracer:            tracer,
+		cdc:                   cdc,
+		paramSpace:            paramSpace,
+		accountKeeper:         ak,
+		bankKeeper:            bankKeeper,
+		stakingKeeper:         sk,
+		feeMarketKeeper:       fmk,
+		storeKey:              storeKey,
+		transientKey:          transientKey,
+		customPrecompiles:     customPrecompiles,
+		evmConstructor:        evmConstructor,
+		tracer:                tracer,
+		entryPointContractABI: types.EntryPointContractABI,
 	}
 }
 

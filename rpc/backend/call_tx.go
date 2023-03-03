@@ -161,16 +161,41 @@ func (b *Backend) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) {
 	return txHash, nil
 }
 
-func (b *Backend) SendUserOperation(args evmtypes.MsgEthereumOp) (common.Hash, error) {
-	opBytes, err := b.clientCtx.OpConfig.OpEncoder()(&args)
+func (b *Backend) SendUserOperation(operation evmtypes.Operation, entryPoint string) (common.Hash, error) {
+	msg := &evmtypes.MsgEthereumOp{
+		Operation:  operation,
+		EntryPoint: entryPoint,
+	}
+
+	if err := msg.ValidateBasic(); err != nil {
+		b.logger.Debug("op failed basic validation", "error", err.Error())
+		return common.Hash{}, err
+	}
+
+	opBuilder := b.clientCtx.OpConfig.NewTxBuilder()
+	err := opBuilder.SetMsgs(msg)
 	if err != nil {
 		return common.Hash{}, err
 	}
-	_, err = b.clientCtx.BroadcastOpSync(opBytes)
+
+	cosmosOp := opBuilder.GetOp()
+	opBytes, err := b.clientCtx.OpConfig.OpEncoder()(cosmosOp)
 	if err != nil {
 		return common.Hash{}, err
 	}
-	return common.Hash{}, nil
+
+	opHash := msg.Hash()
+
+	rsp, err := b.clientCtx.BroadcastOpSync(opBytes)
+	if rsp != nil && rsp.Code != 0 {
+		err = errorsmod.ABCIError(rsp.Codespace, rsp.Code, rsp.RawLog)
+	}
+	if err != nil {
+		b.logger.Error("failed to broadcast operation", "error", err.Error())
+		return opHash, err
+	}
+
+	return opHash, nil
 }
 
 // SetTxDefaults populates tx message with default values in case they are not
