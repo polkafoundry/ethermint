@@ -38,10 +38,10 @@ func RegisterInterfaces(registry codectypes.InterfaceRegistry) {
 func RegisterOpInterfaces(registry codectypes.InterfaceRegistry) {
 	registry.RegisterImplementations(
 		(*sdk.OpMsg)(nil),
-		&MsgEthereumOp{},
+		&OpMsgEthereum{},
 	)
 
-	opservice.RegisterOpServiceDesc(registry, &_OpMsg_serviceDesc)
+	opservice.RegisterOpServiceDesc(registry, &_Op_serviceDesc)
 }
 
 // PackClientState constructs a new Any packed with the given tx data value. It returns

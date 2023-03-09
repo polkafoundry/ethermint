@@ -9,7 +9,7 @@ option go_package = "github.com/evmos/ethermint/x/evm/types";
 // Op defines the evm operation Op service.
 service Op {
   // EthereumOp defines a method submitting Ethereum operations.
-  rpc EthereumOp(EthereumOp) returns (EthereumOpResponse) {
+  rpc EthereumOp(OpMsgEthereum) returns (OpMsgEthereumResponse) {
     option (google.api.http).post = "/ethermint/evm/v1/ethereum_op";
   };
 }
@@ -46,7 +46,7 @@ message Operation {
 }
 
 // EthereumOp encapsulates an Ethereum operation as an SDK message.
-message EthereumOp {
+message OpMsgEthereum {
   option (gogoproto.goproto_getters) = false;
   // operation: user operation
   Operation operation = 1 [(gogoproto.nullable) = false];
@@ -63,9 +63,50 @@ message EthereumOp {
 }
 
 // EthereumOpResponse defines the Msg/EthereumOp response type.
-message EthereumOpResponse {}
+message OpMsgEthereumResponse {
+  option (gogoproto.goproto_getters) = false;
+  // hash of the ethereum operation in hex format. This hash differs from the
+  // Tendermint sha256 hash of the operation bytes
+  string hash = 1;
+  ValidationResult validation_result = 2 [(gogoproto.nullable) = false];
+  bytes ret = 3;
+}
 
 // ExtensionOptionsEthereumOp is an extension option for ethereum transactions
 message ExtensionOptionsEthereumOp {
   option (gogoproto.goproto_getters) = false;
+}
+
+message ReturnInfo {
+  bytes pre_op_gas = 1;
+  bytes pre_fund = 2;
+  bool sig_failed = 3;
+  uint64 valid_after = 4;
+  uint64 valid_until = 5;
+  bytes paymaster_context = 6;
+}
+
+message StakeInfo {
+  bytes stake = 1;
+  bytes unstake_delay_sec = 2;
+}
+
+message AggregatorStakeInfo {
+  string actual_aggregator = 1;
+  StakeInfo stake_info = 2 [(gogoproto.nullable) = false];
+}
+
+message ValidationResult {
+  ReturnInfo return_info = 1 [(gogoproto.nullable) = false];
+  StakeInfo sender_info = 2 [(gogoproto.nullable) = false];
+  StakeInfo factory_info = 3 [(gogoproto.nullable) = false];
+  StakeInfo paymaster_info = 4 [(gogoproto.nullable) = false];
+}
+
+message ValidationResultWithAggregation {
+  ReturnInfo return_info = 1 [(gogoproto.nullable) = false];
+  StakeInfo sender_info = 2 [(gogoproto.nullable) = false];
+  StakeInfo factory_info = 3 [(gogoproto.nullable) = false];
+  StakeInfo paymaster_info = 4 [(gogoproto.nullable) = false];
+  AggregatorStakeInfo aggregator_info = 5 [(gogoproto.nullable) = false];
 }

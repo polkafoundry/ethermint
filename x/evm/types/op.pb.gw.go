@@ -34,17 +34,17 @@ var _ = descriptor.ForMessage
 var _ = metadata.Join
 
 var (
-	filter_OpMsg_EthereumOp_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	filter_Op_EthereumOp_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 )
 
-func request_OpMsg_EthereumOp_0(ctx context.Context, marshaler runtime.Marshaler, client OpMsgClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq MsgEthereumOp
+func request_Op_EthereumOp_0(ctx context.Context, marshaler runtime.Marshaler, client OpClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq OpMsgEthereum
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_OpMsg_EthereumOp_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_Op_EthereumOp_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -53,14 +53,14 @@ func request_OpMsg_EthereumOp_0(ctx context.Context, marshaler runtime.Marshaler
 
 }
 
-func local_request_OpMsg_EthereumOp_0(ctx context.Context, marshaler runtime.Marshaler, server OpMsgServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq MsgEthereumOp
+func local_request_Op_EthereumOp_0(ctx context.Context, marshaler runtime.Marshaler, server OpServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq OpMsgEthereum
 	var metadata runtime.ServerMetadata
 
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_OpMsg_EthereumOp_0); err != nil {
+	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_Op_EthereumOp_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
@@ -69,13 +69,13 @@ func local_request_OpMsg_EthereumOp_0(ctx context.Context, marshaler runtime.Mar
 
 }
 
-// RegisterOpMsgHandlerServer registers the http handlers for service OpMsg to "mux".
-// UnaryRPC     :call OpMsgServer directly.
+// RegisterOpHandlerServer registers the http handlers for service Op to "mux".
+// UnaryRPC     :call OpServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
-// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterOpMsgHandlerFromEndpoint instead.
-func RegisterOpMsgHandlerServer(ctx context.Context, mux *runtime.ServeMux, server OpMsgServer) error {
+// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterOpHandlerFromEndpoint instead.
+func RegisterOpHandlerServer(ctx context.Context, mux *runtime.ServeMux, server OpServer) error {
 
-	mux.Handle("POST", pattern_OpMsg_EthereumOp_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Op_EthereumOp_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -86,7 +86,7 @@ func RegisterOpMsgHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_OpMsg_EthereumOp_0(rctx, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Op_EthereumOp_0(rctx, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
@@ -94,16 +94,16 @@ func RegisterOpMsgHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 			return
 		}
 
-		forward_OpMsg_EthereumOp_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Op_EthereumOp_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
 	return nil
 }
 
-// RegisterOpMsgHandlerFromEndpoint is same as RegisterOpMsgHandler but
+// RegisterOpHandlerFromEndpoint is same as RegisterOpHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterOpMsgHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterOpHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.Dial(endpoint, opts...)
 	if err != nil {
 		return err
@@ -123,23 +123,23 @@ func RegisterOpMsgHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux
 		}()
 	}()
 
-	return RegisterOpMsgHandler(ctx, mux, conn)
+	return RegisterOpHandler(ctx, mux, conn)
 }
 
-// RegisterOpMsgHandler registers the http handlers for service OpMsg to "mux".
+// RegisterOpHandler registers the http handlers for service Op to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterOpMsgHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterOpMsgHandlerClient(ctx, mux, NewOpMsgClient(conn))
+func RegisterOpHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterOpHandlerClient(ctx, mux, NewOpClient(conn))
 }
 
-// RegisterOpMsgHandlerClient registers the http handlers for service OpMsg
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "OpMsgClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "OpMsgClient"
+// RegisterOpHandlerClient registers the http handlers for service Op
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "OpClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "OpClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "OpMsgClient" to call the correct interceptors.
-func RegisterOpMsgHandlerClient(ctx context.Context, mux *runtime.ServeMux, client OpMsgClient) error {
+// "OpClient" to call the correct interceptors.
+func RegisterOpHandlerClient(ctx context.Context, mux *runtime.ServeMux, client OpClient) error {
 
-	mux.Handle("POST", pattern_OpMsg_EthereumOp_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_Op_EthereumOp_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
@@ -148,14 +148,14 @@ func RegisterOpMsgHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_OpMsg_EthereumOp_0(rctx, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Op_EthereumOp_0(rctx, inboundMarshaler, client, req, pathParams)
 		ctx = runtime.NewServerMetadataContext(ctx, md)
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_OpMsg_EthereumOp_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Op_EthereumOp_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -163,9 +163,9 @@ func RegisterOpMsgHandlerClient(ctx context.Context, mux *runtime.ServeMux, clie
 }
 
 var (
-	pattern_OpMsg_EthereumOp_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"ethermint", "evm", "v1", "ethereum_op"}, "", runtime.AssumeColonVerbOpt(false)))
+	pattern_Op_EthereumOp_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"ethermint", "evm", "v1", "ethereum_op"}, "", runtime.AssumeColonVerbOpt(false)))
 )
 
 var (
-	forward_OpMsg_EthereumOp_0 = runtime.ForwardResponseMessage
+	forward_Op_EthereumOp_0 = runtime.ForwardResponseMessage
 )

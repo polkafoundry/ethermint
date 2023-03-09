@@ -8,12 +8,14 @@ import (
 	"math/big"
 
 	errorsmod "cosmossdk.io/errors"
+	"cosmossdk.io/math"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/evmos/ethermint/eip4337"
 	rpctypes "github.com/evmos/ethermint/rpc/types"
 	ethermint "github.com/evmos/ethermint/types"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
@@ -162,40 +164,42 @@ func (b *Backend) SendRawTransaction(data hexutil.Bytes) (common.Hash, error) {
 }
 
 func (b *Backend) SendUserOperation(operation evmtypes.Operation, entryPoint string) (common.Hash, error) {
-	msg := &evmtypes.MsgEthereumOp{
-		Operation:  operation,
-		EntryPoint: entryPoint,
-	}
+	chainIDInt := math.NewIntFromBigInt(b.chainID)
+	msg := evmtypes.NewOpMsgEthereum(operation, &chainIDInt, entryPoint)
 
 	if err := msg.ValidateBasic(); err != nil {
 		b.logger.Debug("op failed basic validation", "error", err.Error())
-		return common.Hash{}, err
+		return common.Hash{}, eip4337.NewInvalidOperationError(err)
 	}
 
 	opBuilder := b.clientCtx.OpConfig.NewTxBuilder()
 	err := opBuilder.SetMsgs(msg)
 	if err != nil {
-		return common.Hash{}, err
+		return common.Hash{}, eip4337.NewInternalError(err)
 	}
 
 	cosmosOp := opBuilder.GetOp()
 	opBytes, err := b.clientCtx.OpConfig.OpEncoder()(cosmosOp)
 	if err != nil {
-		return common.Hash{}, err
+		return common.Hash{}, eip4337.NewInternalError(err)
 	}
-
-	opHash := msg.Hash()
 
 	rsp, err := b.clientCtx.BroadcastOpSync(opBytes)
 	if rsp != nil && rsp.Code != 0 {
-		err = errorsmod.ABCIError(rsp.Codespace, rsp.Code, rsp.RawLog)
+		var msgResponse evmtypes.OpMsgEthereumResponse
+		err = b.clientCtx.Codec.Unmarshal(rsp.Ret, &msgResponse)
+		if err != nil {
+			return common.Hash{}, eip4337.NewInternalError(err)
+		}
+		// FIXME: switch case here?
+		err = eip4337.NewErrorWithData(int(rsp.Code), "???????", msgResponse.ValidationResult)
 	}
 	if err != nil {
 		b.logger.Error("failed to broadcast operation", "error", err.Error())
-		return opHash, err
+		return common.HexToHash(msg.Hash), err
 	}
 
-	return opHash, nil
+	return common.HexToHash(msg.Hash), nil
 }
 
 // SetTxDefaults populates tx message with default values in case they are not
