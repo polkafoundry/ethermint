@@ -18,33 +18,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-type FeeData struct {
-	MaxPriorityFeePerGas *big.Int
-	MaxFeePerGas         *big.Int
-}
-
-type Provider interface {
-	SendRawTransaction(txBytes []byte) error
-	ChainID() *big.Int
-	GetFeeData() (*FeeData, error)
-	GetBalance(address common.Address) (*big.Int, error)
-	GetTransactionCount(address common.Address) (uint64, error)
-	GetTransactionReceipt(txHash common.Hash) (*ethtypes.Receipt, error)
-}
-
-type Signer interface {
-	GetAddress() common.Address
-	GetTransactionCount() (*big.Int, error)
-	SignTx(tx *ethtypes.Transaction) (*ethtypes.Transaction, error)
-}
-
 type BundleManager struct {
 	logger                 log.Logger
 	beneficiary            common.Address
 	minSignerBalance       *big.Int
-	maxBundleGas           *big.Int
-	signer                 Signer
-	provider               Provider
+	maxBundleGas           uint64
+	signer                 ISigner
+	provider               IProvider
 	eventsManager          IEventsManager
 	mempoolManager         IMempoolManager
 	reputationManager      IReputationManager
@@ -57,8 +37,8 @@ type BundleManager struct {
 
 func NewBundleManager(
 	logger log.Logger,
-	provider Provider,
-	signer Signer,
+	provider IProvider,
+	signer ISigner,
 	entryPoint entrypoint_interface.IEntryPoint,
 	eventsManager IEventsManager,
 	mempoolManager IMempoolManager,
@@ -66,7 +46,7 @@ func NewBundleManager(
 	reputationManager IReputationManager,
 	beneficiary common.Address,
 	minSignerBalance *big.Int,
-	maxBundleGas *big.Int,
+	maxBundleGas uint64,
 ) *BundleManager {
 	return &BundleManager{
 		logger:                 log.EnsureLogger(logger),
@@ -86,7 +66,7 @@ func NewBundleManager(
 	}
 }
 
-var ErrNoBundle = errors.New("no bundle to send")
+var ErrNotEnoughOps = errors.New("not enough user operations to bundle")
 
 type SendBundleReturn struct {
 	TransactionHash common.Hash
@@ -104,7 +84,7 @@ func (manager *BundleManager) SendNextBundle() (SendBundleReturn, error) {
 
 	bundle := manager.createBundle()
 	if len(bundle) == 0 {
-		return SendBundleReturn{}, ErrNoBundle
+		return SendBundleReturn{}, ErrNotEnoughOps
 	}
 
 	beneficiary, err := manager.selectBeneficiary()
@@ -168,7 +148,12 @@ func (manager *BundleManager) sendBundle(bundle []types.UserOperation, beneficia
 		manager.mempoolManager.RemoveUserOp(op)
 	}
 
-	hashes := GetUserOpHashes(bundle, manager.entryPoint.Address(), manager.provider.ChainID())
+	chainID, err := manager.provider.ChainID()
+	if err != nil {
+		return SendBundleReturn{}, err
+	}
+
+	hashes := GetUserOpHashes(bundle, manager.entryPoint.Address(), chainID)
 
 	return SendBundleReturn{
 		TransactionHash: tx.Hash(),
@@ -178,15 +163,14 @@ func (manager *BundleManager) sendBundle(bundle []types.UserOperation, beneficia
 
 func (manager *BundleManager) prepareBundleTx(bundle []types.UserOperation, beneficiary common.Address) ([]types.UserOperation, *ethtypes.Transaction, error) {
 	for {
-		feeData, err := manager.provider.GetFeeData()
+		gasPrice, err := manager.provider.GetGasPrice()
 		if err != nil {
 			return bundle, nil, err
 		}
 
 		tx, err := manager.entryPoint.Transactor().HandleOps(&bind.TransactOpts{
-			NoSend:    true,
-			GasFeeCap: feeData.MaxFeePerGas,
-			GasTipCap: feeData.MaxPriorityFeePerGas,
+			NoSend:   true,
+			GasPrice: gasPrice,
 			Signer: func(_ common.Address, transaction *ethtypes.Transaction) (*ethtypes.Transaction, error) {
 				return manager.signer.SignTx(transaction)
 			},
@@ -205,7 +189,7 @@ func (manager *BundleManager) prepareBundleTx(bundle []types.UserOperation, bene
 		}
 
 		if len(bundle) == 0 {
-			return bundle, nil, ErrNoBundle
+			return bundle, nil, ErrNotEnoughOps
 		}
 	}
 }
@@ -349,7 +333,7 @@ func (manager *BundleManager) createBundle() []types.UserOperation {
 		userOpGasCost := new(big.Int).Add(validationResult.ReturnInfo.PreOpGas, entry.UserOp.CallGasLimit())
 		newTotalGas := new(big.Int).Add(totalGas, userOpGasCost)
 
-		if newTotalGas.Cmp(manager.maxBundleGas) > 0 {
+		if newTotalGas.Cmp(new(big.Int).SetUint64(manager.maxBundleGas)) > 0 {
 			break
 		}
 

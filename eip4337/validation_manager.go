@@ -15,7 +15,7 @@ import (
 
 type IValidationManager interface {
 	ValidateUserOp(op types.UserOperation, checkStakes bool) (ValidationResult, error)
-	ValidateUserOpBasic(op types.UserOperation, entryPointAddress *common.Address, requireSignature bool, requireGasParams bool) error
+	ValidateUserOpBasic(op types.UserOperation, entryPointAddress common.Address, requireSignature bool, requireGasParams bool) error
 }
 
 var _ IValidationManager = (*ValidationManager)(nil)
@@ -24,6 +24,18 @@ type ValidationManager struct {
 	entryPoint        entrypoint_interface.IEntryPoint
 	reputationManager IReputationManager
 	unsafe            bool
+}
+
+func NewValidationManager(
+	entryPoint entrypoint_interface.IEntryPoint,
+	reputationManager IReputationManager,
+	unsafe bool,
+) IValidationManager {
+	return &ValidationManager{
+		entryPoint:        entryPoint,
+		reputationManager: reputationManager,
+		unsafe:            unsafe,
+	}
 }
 
 type ValidationResult struct {
@@ -196,11 +208,7 @@ func (manager *ValidationManager) callSimulateValidation(op types.UserOperation)
 	)
 }
 
-func (manager *ValidationManager) ValidateUserOpBasic(op types.UserOperation, entryPointAddress *common.Address, requireSignature bool, requireGasParams bool) error {
-	if entryPointAddress == nil {
-		return NewRPCError(ErrorCodeInvalidFields, "no entry point param", nil)
-	}
-
+func (manager *ValidationManager) ValidateUserOpBasic(op types.UserOperation, entryPointAddress common.Address, requireSignature bool, requireGasParams bool) error {
 	if entryPointAddress.String() != manager.entryPoint.Address().String() {
 		return NewRPCError(
 			ErrorCodeInvalidFields,

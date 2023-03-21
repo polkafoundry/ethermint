@@ -19,12 +19,20 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime/pprof"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/evmos/ethermint/eip4337"
+	entrypoint_interface "github.com/evmos/ethermint/eip4337/entrypoint"
+	"github.com/evmos/ethermint/rpc/backend"
+	rpcfilters "github.com/evmos/ethermint/rpc/namespaces/ethereum/eth/filters"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -219,6 +227,22 @@ which accepts a path for the resulting pprof file.
 
 	cmd.Flags().Uint64(server.FlagStateSyncSnapshotInterval, 0, "State sync snapshot interval")
 	cmd.Flags().Uint32(server.FlagStateSyncSnapshotKeepRecent, 2, "State sync snapshot to keep")
+
+	cmd.Flags().Bool(srvflags.BundlerEnable, false, "Define if node should be run as a bundler. Others bundler flags are ignored if it is set to \"false\"")
+	cmd.Flags().Bool(srvflags.BundlerDebug, false, "Define if bundler debug namespace should be enabled. It is not recommended in production")
+	cmd.Flags().String(srvflags.BundlerBeneficiaryAddress, "", "Address to receive funds")
+	cmd.Flags().String(srvflags.BundlerEntryPointAddress, "", "Address of the supported EntryPoint contract")
+	cmd.Flags().String(srvflags.BundlerMinBalance, "0x0", "Below this signer balance, keep fee for itself, ignoring \"beneficiary\" address. Accept hexadecimal string with 0x prefix")
+	cmd.Flags().Bool(srvflags.BundlerSignerAddress, false, "Address of signer account in hexadecimal format")
+
+	cmd.Flags().Bool(srvflags.BundlerAutoBundle, false, "Automatic bundling. Ignore auto-bundle-interval and auto-bundle-mempool-size if it is set to \"true\"")
+	cmd.Flags().StringSlice(srvflags.BundlerWhitelist, []string{}, "Whitelist addresses")
+	cmd.Flags().StringSlice(srvflags.BundlerBlacklist, []string{}, "Blacklist addresses")
+	cmd.Flags().Uint64(srvflags.BundlerMaxBundleGas, 250000, "Maximum gas for a bundle")
+	cmd.Flags().String(srvflags.BundlerMinStake, "0x0", "Minimum stake of a paymaster/factory/account if required")
+	cmd.Flags().Uint64(srvflags.BundlerMinUnstakeDelay, 0, "Minimum unstake delay of a paymaster/factory/account if required")
+	cmd.Flags().Uint64(srvflags.BundlerAutoBundleInterval, 0, "Automatically do bundle after a period of time, in seconds. It is ignored if auto-bundle is set to \"true\"")
+	cmd.Flags().Uint64(srvflags.BundlerAutoBundleMempoolSize, 0, "Automatically do bundle if the number of user operations reaches this size. It is ignored if auto-bundle is set to \"true\"")
 
 	// add support for all Tendermint-specific command line options
 	tcmd.AddNodeFlags(cmd)
@@ -551,6 +575,95 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 	}
 
 	var (
+		additionalAPIs []ethrpc.API
+		eventsManager  eip4337.IEventsManager
+	)
+
+	// bundler can be enabled only if json rpc is enabled as well
+	if config.Bundler.Enabled && config.JSONRPC.Enable {
+		evmBackend := backend.NewBackend(ctx, ctx.Logger, clientCtx, config.JSONRPC.AllowUnprotectedTxs, idxer)
+		signerAddress := common.HexToAddress(config.Bundler.SignerAddress)
+		signer := eip4337.NewSigner(ctx.Logger, clientCtx.Keyring, signerAddress, evmBackend)
+		provider := eip4337.NewProvider(ctx.Logger, evmBackend)
+
+		tmWsClient := ConnectTmWS(cfg.RPC.ListenAddress, "/websocket", ctx.Logger)
+		eventsSystem := rpcfilters.NewEventSystem(logger, tmWsClient)
+		localClient := eip4337.NewLocalClient(ctx.Logger, eventsSystem, evmBackend)
+
+		entryPointAddress := common.HexToAddress(config.Bundler.EntryPointAddress)
+		entryPoint, err := entrypoint_interface.NewEntryPoint(entryPointAddress, localClient)
+		if err != nil {
+			return err
+		}
+
+		// safe to do because the config is validated
+		minStake, _ := new(big.Int).SetString(config.Bundler.MinStake[2:], 16)
+		reputationManager := eip4337.NewReputationManager(
+			ctx.Logger,
+			eip4337.DefaultBundlerReputationParams(),
+			minStake,
+			config.Bundler.MinUnstakeDelay,
+		)
+
+		parseAddressesFn := func(arr []string) []common.Address {
+			parsed := make([]common.Address, len(arr))
+			for i, a := range arr {
+				parsed[i] = common.HexToAddress(a)
+			}
+			return parsed
+		}
+
+		reputationManager.AddWhitelist(parseAddressesFn(config.Bundler.Whitelist)...)
+		reputationManager.AddBlacklist(parseAddressesFn(config.Bundler.Blacklist)...)
+
+		mempoolManager := eip4337.NewMempoolManager(reputationManager)
+		validationManager := eip4337.NewValidationManager(entryPoint, reputationManager, false)
+		eventsManager = eip4337.NewEventsManager(entryPoint, mempoolManager, reputationManager)
+
+		minSignerBalance, _ := new(big.Int).SetString(config.Bundler.MinBalance[2:], 16)
+		bundleManager := eip4337.NewBundleManager(
+			ctx.Logger,
+			provider,
+			signer,
+			entryPoint,
+			eventsManager,
+			mempoolManager,
+			validationManager,
+			reputationManager,
+			common.HexToAddress(config.Bundler.BeneficiaryAddress),
+			minSignerBalance,
+			config.Bundler.MaxBundleGas,
+		)
+		executionManager := eip4337.NewExecutionManager(ctx.Logger, provider, entryPoint, bundleManager, mempoolManager, reputationManager, validationManager, eventsManager)
+
+		// it is okay to start bundling interval since the mempool is empty at the moment
+		if config.Bundler.AutoBundle {
+			config.Bundler.AutoBundleInterval = 0
+			config.Bundler.AutoBundleMempoolSize = 0
+		}
+		err = executionManager.SetBundlingInterval(config.Bundler.AutoBundleInterval, config.Bundler.AutoBundleMempoolSize)
+		if err != nil {
+			return err
+		}
+
+		additionalAPIs = append(additionalAPIs, ethrpc.API{
+			Namespace: "eth",
+			Version:   "1.0",
+			Service:   eip4337.NewPublicAPI(executionManager),
+			Public:    true,
+		})
+
+		if config.Bundler.Debug {
+			additionalAPIs = append(additionalAPIs, ethrpc.API{
+				Namespace: "debug",
+				Version:   "1.0",
+				Service:   eip4337.NewDebugAPI(executionManager),
+				Public:    true,
+			})
+		}
+	}
+
+	var (
 		httpSrv     *http.Server
 		httpSrvDone chan struct{}
 	)
@@ -565,10 +678,11 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 
 		tmEndpoint := "/websocket"
 		tmRPCAddr := cfg.RPC.ListenAddress
-		httpSrv, httpSrvDone, err = StartJSONRPC(ctx, clientCtx, tmRPCAddr, tmEndpoint, &config, idxer)
+		httpSrv, httpSrvDone, err = StartJSONRPC(ctx, clientCtx, tmRPCAddr, tmEndpoint, &config, idxer, additionalAPIs...)
 		if err != nil {
 			return err
 		}
+
 		defer func() {
 			shutdownCtx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancelFn()
@@ -582,6 +696,14 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 				}
 			}
 		}()
+	}
+
+	// wait for json rpc server started successfully, init event listeners for bundler
+	if eventsManager != nil {
+		err := eventsManager.InitEventListener()
+		if err != nil {
+			return err
+		}
 	}
 
 	// At this point it is safe to block the process if we're in query only mode as

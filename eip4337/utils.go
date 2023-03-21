@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/evmos/ethermint/eip4337/types"
+	rpctypes "github.com/evmos/ethermint/rpc/types"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -107,4 +108,11 @@ func newDummyBytesSliceWithValue(n int, v byte) []byte {
 		arr[i] = v
 	}
 	return arr
+}
+
+func toBlockNumberArg(bn *big.Int) rpctypes.BlockNumber {
+	if bn == nil || !bn.IsInt64() {
+		return rpctypes.EthLatestBlockNumber
+	}
+	return rpctypes.BlockNumber(bn.Int64())
 }

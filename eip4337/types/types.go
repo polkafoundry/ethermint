@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type UserOperation struct {
@@ -22,22 +23,22 @@ type UserOperation struct {
 }
 
 type UserOperationArgs struct {
-	Sender               *common.Address
-	Nonce                *hexutil.Big
-	InitCode             *hexutil.Bytes
-	CallData             *hexutil.Bytes
-	CallGasLimit         *hexutil.Big
-	VerificationGasLimit *hexutil.Big
-	PreVerificationGas   *hexutil.Big
-	MaxFeePerGas         *hexutil.Big
-	MaxPriorityFeePerGas *hexutil.Big
-	PaymasterAndData     *hexutil.Bytes
-	Signature            *hexutil.Bytes
+	Sender               *common.Address `json:"sender,omitempty"`
+	Nonce                *hexutil.Big    `json:"nonce,omitempty"`
+	InitCode             *hexutil.Bytes  `json:"initCode,omitempty"`
+	CallData             *hexutil.Bytes  `json:"callData,omitempty"`
+	CallGasLimit         *hexutil.Big    `json:"callGasLimit,omitempty"`
+	VerificationGasLimit *hexutil.Big    `json:"verificationGasLimit,omitempty"`
+	PreVerificationGas   *hexutil.Big    `json:"preVerificationGas,omitempty"`
+	MaxFeePerGas         *hexutil.Big    `json:"maxFeePerGas,omitempty"`
+	MaxPriorityFeePerGas *hexutil.Big    `json:"maxPriorityFeePerGas,omitempty"`
+	PaymasterAndData     *hexutil.Bytes  `json:"paymasterAndData,omitempty"`
+	Signature            *hexutil.Bytes  `json:"signature,omitempty"`
 }
 
 func NewUserOperation(args UserOperationArgs) UserOperation {
 	userOp := UserOperation{
-		sender:               args.Sender,
+		sender:               copyAddressPtr(args.Sender),
 		nonce:                (*big.Int)(args.Nonce),
 		initCode:             nil,
 		callData:             nil,
@@ -163,4 +164,81 @@ func copyAddressPtr(a *common.Address) *common.Address {
 type ReferencedCodeHashes struct {
 	Addresses []common.Address
 	Hash      common.Hash
+}
+
+type EstimateUserOpGasResult struct {
+	PreVerificationGas *hexutil.Big    `json:"preVerificationGas,omitempty"`
+	VerificationGas    *hexutil.Big    `json:"verificationGas,omitempty"`
+	ValidAfter         *hexutil.Uint64 `json:"validAfter,omitempty"`
+	ValidUntil         *hexutil.Uint64 `json:"validUntil,omitempty"`
+	CallGasLimit       *hexutil.Uint64 `json:"callGasLimit,omitempty"`
+}
+
+type UserOperationReceipt struct {
+	UserOpHash    *common.Hash      `json:"userOpHash,omitempty"`
+	Sender        *common.Address   `json:"sender,omitempty"`
+	Nonce         *hexutil.Big      `json:"nonce,omitempty"`
+	Paymaster     *common.Address   `json:"paymaster,omitempty"`
+	ActualGasCode *hexutil.Big      `json:"actualGasCode,omitempty"`
+	ActualGasUsed *hexutil.Big      `json:"actualGasUsed,omitempty"`
+	Success       bool              `json:"success,omitempty"`
+	Reason        *string           `json:"reason,omitempty"`
+	Logs          []*ethtypes.Log   `json:"logs,omitempty"`
+	Receipt       *ethtypes.Receipt `json:"receipt,omitempty"`
+}
+
+type UserOperationResponse struct {
+	Sender               *common.Address `json:"sender,omitempty"`
+	Nonce                *hexutil.Big    `json:"nonce,omitempty"`
+	InitCode             *hexutil.Bytes  `json:"initCode,omitempty"`
+	CallData             *hexutil.Bytes  `json:"callData,omitempty"`
+	CallGasLimit         *hexutil.Big    `json:"callGasLimit,omitempty"`
+	VerificationGasLimit *hexutil.Big    `json:"verificationGasLimit,omitempty"`
+	PreVerificationGas   *hexutil.Big    `json:"preVerificationGas,omitempty"`
+	MaxFeePerGas         *hexutil.Big    `json:"maxFeePerGas,omitempty"`
+	MaxPriorityFeePerGas *hexutil.Big    `json:"maxPriorityFeePerGas,omitempty"`
+	PaymasterAndData     *hexutil.Bytes  `json:"paymasterAndData,omitempty"`
+	Signature            *hexutil.Bytes  `json:"signature,omitempty"`
+}
+
+func ToUserOperationResponse(userOp UserOperation) UserOperationResponse {
+	initCode := userOp.InitCode()
+	callData := userOp.CallData()
+	paymasterAndData := userOp.PaymasterAndData()
+	signature := userOp.Signature()
+
+	return UserOperationResponse{
+		Sender:               userOp.Sender(),
+		Nonce:                (*hexutil.Big)(userOp.Nonce()),
+		InitCode:             (*hexutil.Bytes)(&initCode),
+		CallData:             (*hexutil.Bytes)(&callData),
+		CallGasLimit:         (*hexutil.Big)(userOp.CallGasLimit()),
+		VerificationGasLimit: (*hexutil.Big)(userOp.VerificationGasLimit()),
+		PreVerificationGas:   (*hexutil.Big)(userOp.PreVerificationGas()),
+		MaxFeePerGas:         (*hexutil.Big)(userOp.MaxFeePerGas()),
+		MaxPriorityFeePerGas: (*hexutil.Big)(userOp.MaxPriorityFeePerGas()),
+		PaymasterAndData:     (*hexutil.Bytes)(&paymasterAndData),
+		Signature:            (*hexutil.Bytes)(&signature),
+	}
+}
+
+func ToUserOperationResponses(userOps []UserOperation) []UserOperationResponse {
+	userOpResponses := make([]UserOperationResponse, len(userOps))
+	for idx, op := range userOps {
+		userOpResponses[idx] = ToUserOperationResponse(op)
+	}
+	return userOpResponses
+}
+
+type ReputationArgs struct {
+	Address     common.Address `json:"address,omitempty"`
+	OpsSeen     int64          `json:"opsSeen,omitempty"`
+	OpsIncluded int64          `json:"opsIncluded,omitempty"`
+}
+
+type ReputationResponse struct {
+	Address     common.Address `json:"address,omitempty"`
+	OpsSeen     int64          `json:"opsSeen"`
+	OpsIncluded int64          `json:"opsIncluded"`
+	Status      string         `json:"status"`
 }

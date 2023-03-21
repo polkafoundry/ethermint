@@ -1,4 +1,4 @@
-package client
+package eip4337
 
 import (
 	"context"
@@ -235,11 +235,4 @@ func (client *LocalClient) SubscribeFilterLogs(_ context.Context, query ethereum
 	}()
 
 	return s, nil
-}
-
-func toBlockNumberArg(bn *big.Int) rpctypes.BlockNumber {
-	if bn == nil || !bn.IsInt64() {
-		return rpctypes.EthLatestBlockNumber
-	}
-	return rpctypes.BlockNumber(bn.Int64())
 }
