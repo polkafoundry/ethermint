@@ -88,4 +88,55 @@ certificate-path = "{{ .TLS.CertificatePath }}"
 
 # Key path defines the key.pem file path for the TLS configuration.
 key-path = "{{ .TLS.KeyPath }}"
+
+###############################################################################
+###                          Bundler Configuration                          ###
+###############################################################################
+
+[bundler]
+
+# Enable defines if node should be run as a bundler. Others bundler configuration fields are ignored if it is set to "false"
+enable = {{ .Bundler.Enable }}
+
+# Debug defines if bundler debug namespace should be enabled. It is not recommended in production
+debug = {{ .Bundler.Debug }}
+
+# Beneficiary defines address to receive funds
+beneficiary = "{{ .Bundler.BeneficiaryAddress }}"
+
+# Entrypoint defines address of the supported EntryPoint contract
+entrypoint = "{{ .Bundler.EntryPointAddress }}"
+
+# MinBalance defines the minimum balance that when the signer balance is lower, it should keep fee for itself instead of "beneficiary" address.
+# MinBalance should be a hexadecimal string with 0x prefix
+min-balance = "{{ .Bundler.MinBalance }}"
+
+# Signer is address of signer account which used to sign bundle transactions.
+# should be in hexadecimal format, not the cosmos-sdk one
+signer = "{{ .Bundler.SignerAddress }}"
+
+# AutoBundle defines if the bundling should be automatically after receive an user operation.
+# AutoBundleInterval and AutoBundleMempoolSize are ignored (set to 0) if AutoBundle is "true".
+auto-bundle = {{ .Bundler.AutoBundle }}
+
+# Whitelist defines a list of addresses that will be skip the reputation check.
+whitelist = "{{range $index, $elmt := .Bundler.Whitelist}}{{if $index}},{{$elmt}}{{else}}{{$elmt}}{{end}}{{end}}"
+
+# Blacklist defines a list of addresses that is banned.
+blacklist = "{{range $index, $elmt := .Bundler.Blacklist}}{{if $index}},{{$elmt}}{{else}}{{$elmt}}{{end}}{{end}}"
+
+# MaxBundleGas defines the maximum gas for a bundle transaction.
+max-bundle-gas = {{ .Bundler.MaxBundleGas }}
+
+# MinStake defines the minimum stake of a paymaster/factory/account if required.
+min-stake = "{{ .Bundler.MinStake }}"
+
+# MinUnstakeDelay defines the minimum unstake delay of a paymaster/factory/account if required.
+min-unstake-delay = {{ .Bundler.MinUnstakeDelay }}
+
+# AutoBundleInterval defines the time in seconds that bundler will attempt to do bundle.
+auto-bundle-interval = {{ .Bundler.AutoBundleInterval }}
+
+# AutoBundleMempoolSize defines the number of user operation in mempool that will trigger a bundle even if AutoBundleInterval has not come yet
+auto-bundle-mempool-size = {{ .Bundler.AutoBundleMempoolSize }}
 `

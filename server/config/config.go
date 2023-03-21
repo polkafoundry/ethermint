@@ -71,7 +71,7 @@ type Config struct {
 }
 
 type BundlerConfig struct {
-	Enabled            bool   `mapstructure:"enable"`
+	Enable             bool   `mapstructure:"enable"`
 	Debug              bool   `mapstructure:"debug"`
 	BeneficiaryAddress string `mapstructure:"beneficiary"`
 	EntryPointAddress  string `mapstructure:"entrypoint"`
@@ -90,15 +90,15 @@ type BundlerConfig struct {
 
 func DefaultBundlerConfig() *BundlerConfig {
 	return &BundlerConfig{
-		Enabled:               false,
+		Enable:                false,
 		Debug:                 false,
 		BeneficiaryAddress:    "",
 		EntryPointAddress:     "",
 		MinBalance:            "0x",
 		SignerAddress:         "",
 		AutoBundle:            false,
-		Whitelist:             nil,
-		Blacklist:             nil,
+		Whitelist:             []string{"0xcafebabe"},
+		Blacklist:             []string{"deadbeef"},
 		MaxBundleGas:          0,
 		MinStake:              "0x",
 		MinUnstakeDelay:       0,
@@ -109,7 +109,7 @@ func DefaultBundlerConfig() *BundlerConfig {
 
 func (config *BundlerConfig) Validate() error {
 	// do not check other config values if bundler is not enabled
-	if !config.Enabled {
+	if !config.Enable {
 		return nil
 	}
 
@@ -399,7 +399,7 @@ func GetConfig(v *viper.Viper) (Config, error) {
 			KeyPath:         v.GetString("tls.key-path"),
 		},
 		Bundler: BundlerConfig{
-			Enabled:            viper.GetBool("bundler.enable"),
+			Enable:             viper.GetBool("bundler.enable"),
 			Debug:              viper.GetBool("bundler.debug"),
 			BeneficiaryAddress: viper.GetString("bundler.beneficiary"),
 			EntryPointAddress:  viper.GetString("bundler.entrypoint"),

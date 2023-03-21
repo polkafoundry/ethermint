@@ -546,7 +546,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 	)
 
 	// bundler can be enabled only if json rpc is enabled as well
-	if config.Bundler.Enabled && config.JSONRPC.Enable {
+	if config.Bundler.Enable && config.JSONRPC.Enable {
 		evmBackend := backend.NewBackend(ctx, ctx.Logger, clientCtx, config.JSONRPC.AllowUnprotectedTxs, idxer)
 		signerAddress := common.HexToAddress(config.Bundler.SignerAddress)
 		signer := eip4337.NewSigner(ctx.Logger, clientCtx.Keyring, signerAddress, evmBackend)
