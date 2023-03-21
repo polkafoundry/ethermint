@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"path"
 	"time"
 
@@ -66,6 +67,70 @@ type Config struct {
 	EVM     EVMConfig     `mapstructure:"evm"`
 	JSONRPC JSONRPCConfig `mapstructure:"json-rpc"`
 	TLS     TLSConfig     `mapstructure:"tls"`
+	Bundler BundlerConfig `mapstructure:"bundler"`
+}
+
+type BundlerConfig struct {
+	Enabled            bool   `mapstructure:"enable"`
+	Debug              bool   `mapstructure:"debug"`
+	BeneficiaryAddress string `mapstructure:"beneficiary"`
+	EntryPointAddress  string `mapstructure:"entrypoint"`
+	MinBalance         string `mapstructure:"min-balance"`
+	SignerAddress      string `mapstructure:"signer"`
+
+	AutoBundle            bool     `mapstructure:"auto-bundle"`
+	Whitelist             []string `mapstructure:"whitelist"`
+	Blacklist             []string `mapstructure:"blacklist"`
+	MaxBundleGas          uint64   `mapstructure:"max-bundle-gas"`
+	MinStake              string   `mapstructure:"min-stake"`
+	MinUnstakeDelay       uint64   `mapstructure:"min-unstake-delay"`
+	AutoBundleInterval    uint64   `mapstructure:"auto-bundle-interval"`
+	AutoBundleMempoolSize uint64   `mapstructure:"auto-bundle-mempool-size"`
+}
+
+func DefaultBundlerConfig() *BundlerConfig {
+	return &BundlerConfig{
+		Enabled:               false,
+		Debug:                 false,
+		BeneficiaryAddress:    "",
+		EntryPointAddress:     "",
+		MinBalance:            "0x",
+		SignerAddress:         "",
+		AutoBundle:            false,
+		Whitelist:             nil,
+		Blacklist:             nil,
+		MaxBundleGas:          0,
+		MinStake:              "0x",
+		MinUnstakeDelay:       0,
+		AutoBundleInterval:    0,
+		AutoBundleMempoolSize: 0,
+	}
+}
+
+func (config *BundlerConfig) Validate() error {
+	// do not check other config values if bundler is not enabled
+	if !config.Enabled {
+		return nil
+	}
+
+	if len(config.MinBalance) < 2 {
+		return errors.New("min-balance must be a number in a hex string format")
+	}
+	_, ok := new(big.Int).SetString(config.MinBalance[2:], 16)
+	if !ok {
+		return errors.New("min-balance must be a number in a hex string format")
+	}
+
+	if len(config.MinStake) < 2 {
+		return errors.New("min-stake must be a number in a hex string format")
+	}
+	_, ok = new(big.Int).SetString(config.MinStake[2:], 16)
+	if !ok {
+		return errors.New("min-stake must be a number in a hex string format")
+	}
+
+	// FIXME: add more validation
+	return nil
 }
 
 // EVMConfig defines the application configuration values for the EVM.
@@ -153,6 +218,7 @@ func AppConfig(denom string) (string, interface{}) {
 		EVM:     *DefaultEVMConfig(),
 		JSONRPC: *DefaultJSONRPCConfig(),
 		TLS:     *DefaultTLSConfig(),
+		Bundler: *DefaultBundlerConfig(),
 	}
 
 	customAppTemplate := config.DefaultConfigTemplate + DefaultConfigTemplate
@@ -167,6 +233,7 @@ func DefaultConfig() *Config {
 		EVM:     *DefaultEVMConfig(),
 		JSONRPC: *DefaultJSONRPCConfig(),
 		TLS:     *DefaultTLSConfig(),
+		Bundler: *DefaultBundlerConfig(),
 	}
 }
 
@@ -331,6 +398,23 @@ func GetConfig(v *viper.Viper) (Config, error) {
 			CertificatePath: v.GetString("tls.certificate-path"),
 			KeyPath:         v.GetString("tls.key-path"),
 		},
+		Bundler: BundlerConfig{
+			Enabled:            viper.GetBool("bundler.enable"),
+			Debug:              viper.GetBool("bundler.debug"),
+			BeneficiaryAddress: viper.GetString("bundler.beneficiary"),
+			EntryPointAddress:  viper.GetString("bundler.entrypoint"),
+			MinBalance:         viper.GetString("bundler.min-balance"),
+			SignerAddress:      viper.GetString("bundler.signer"),
+
+			AutoBundle:            viper.GetBool("bundler.auto-bundle"),
+			Whitelist:             viper.GetStringSlice("bundler.whitelist"),
+			Blacklist:             viper.GetStringSlice("bundler.blacklist"),
+			MaxBundleGas:          viper.GetUint64("bundler.max-bundle-gas"),
+			MinStake:              viper.GetString("bundler.min-stake"),
+			MinUnstakeDelay:       viper.GetUint64("bundler.min-unstake-delay"),
+			AutoBundleInterval:    viper.GetUint64("bundler.auto-bundle-interval"),
+			AutoBundleMempoolSize: viper.GetUint64("bundler.auto-bundle-mempool-size"),
+		},
 	}, nil
 }
 
@@ -355,6 +439,10 @@ func (c Config) ValidateBasic() error {
 
 	if err := c.TLS.Validate(); err != nil {
 		return errorsmod.Wrapf(errortypes.ErrAppConfig, "invalid tls config value: %s", err.Error())
+	}
+
+	if err := c.Bundler.Validate(); err != nil {
+		return errorsmod.Wrapf(errortypes.ErrAppConfig, "invalid bundler config value: %s", err.Error())
 	}
 
 	return c.Config.ValidateBasic()

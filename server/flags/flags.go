@@ -56,6 +56,24 @@ const (
 	JSONRPCEnableMetrics = "metrics"
 )
 
+const (
+	BundlerEnable             = "bundler.enable"
+	BundlerDebug              = "bundler.debug"
+	BundlerBeneficiaryAddress = "bundler.beneficiary"
+	BundlerEntryPointAddress  = "bundler.entrypoint"
+	BundlerMinBalance         = "bundler.min-balance"
+	BundlerSignerAddress      = "bundler.signer"
+
+	BundlerAutoBundle            = "bundler.auto-bundle"
+	BundlerWhitelist             = "bundler.whitelist"
+	BundlerBlacklist             = "bundler.blacklist"
+	BundlerMaxBundleGas          = "bundler.max-bundle-gas"
+	BundlerMinStake              = "bundler.min-stake"
+	BundlerMinUnstakeDelay       = "bundler.min-unstake-delay"
+	BundlerAutoBundleInterval    = "bundler.auto-bundle-interval"
+	BundlerAutoBundleMempoolSize = "bundler.auto-bundle-mempool-size"
+)
+
 // EVM flags
 const (
 	EVMTracer         = "evm.tracer"

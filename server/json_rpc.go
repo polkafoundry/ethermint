@@ -25,6 +25,7 @@ func StartJSONRPC(ctx *server.Context,
 	tmEndpoint string,
 	config *config.Config,
 	indexer ethermint.EVMTxIndexer,
+	additionalAPIs ...ethrpc.API,
 ) (*http.Server, chan struct{}, error) {
 	tmWsClient := ConnectTmWS(tmRPCAddr, tmEndpoint, ctx.Logger)
 
@@ -49,6 +50,17 @@ func StartJSONRPC(ctx *server.Context,
 	apis := rpc.GetRPCAPIs(ctx, clientCtx, tmWsClient, allowUnprotectedTxs, indexer, rpcAPIArr)
 
 	for _, api := range apis {
+		if err := rpcServer.RegisterName(api.Namespace, api.Service); err != nil {
+			ctx.Logger.Error(
+				"failed to register service in JSON RPC namespace",
+				"namespace", api.Namespace,
+				"service", api.Service,
+			)
+			return nil, nil, err
+		}
+	}
+
+	for _, api := range additionalAPIs {
 		if err := rpcServer.RegisterName(api.Namespace, api.Service); err != nil {
 			ctx.Logger.Error(
 				"failed to register service in JSON RPC namespace",

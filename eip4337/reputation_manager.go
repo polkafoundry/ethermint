@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/evmos/ethermint/eip4337/log"
 )
 
 type ReputationStatus string
@@ -17,6 +18,8 @@ const (
 )
 
 type IReputationManager interface {
+	AddWhitelist(addresses ...common.Address)
+	AddBlacklist(addresses ...common.Address)
 	HourlyCron()
 	Status(addr *common.Address) ReputationStatus
 	CheckStake(title string, stakeInfo StakeInfo) error
@@ -32,12 +35,26 @@ var _ IReputationManager = (*ReputationManager)(nil)
 
 type ReputationManager struct {
 	mtx             *sync.RWMutex
+	logger          log.Logger
 	params          ReputationParams
 	minStake        *big.Int
-	minUnstakeDelay uint32
+	minUnstakeDelay uint64
 	entries         map[string]ReputationEntry
 	blackList       map[string]struct{}
 	whiteList       map[string]struct{}
+}
+
+func NewReputationManager(logger log.Logger, params ReputationParams, minStake *big.Int, minUnstakeDelay uint64) *ReputationManager {
+	return &ReputationManager{
+		mtx:             &sync.RWMutex{},
+		logger:          log.EnsureLogger(logger),
+		params:          params,
+		minStake:        minStake,
+		minUnstakeDelay: minUnstakeDelay,
+		entries:         make(map[string]ReputationEntry),
+		blackList:       make(map[string]struct{}),
+		whiteList:       make(map[string]struct{}),
+	}
 }
 
 type ReputationParams struct {
@@ -66,6 +83,24 @@ type ReputationEntry struct {
 	Address     common.Address
 	OpsSeen     int64
 	OpsIncluded int64
+}
+
+func (manager *ReputationManager) AddWhitelist(addresses ...common.Address) {
+	manager.mtx.Lock()
+	defer manager.mtx.Unlock()
+
+	for _, addr := range addresses {
+		manager.whiteList[addr.String()] = struct{}{}
+	}
+}
+
+func (manager *ReputationManager) AddBlacklist(addresses ...common.Address) {
+	manager.mtx.Lock()
+	defer manager.mtx.Unlock()
+
+	for _, addr := range addresses {
+		manager.blackList[addr.String()] = struct{}{}
+	}
 }
 
 func (manager *ReputationManager) HourlyCron() {

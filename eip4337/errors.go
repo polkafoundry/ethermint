@@ -18,6 +18,7 @@ const (
 	ErrorCodeInvalidSignature               = -32507
 
 	ErrorCodeUserOperationReverted = -32521
+	ErrorCodeInvalidRequest        = -39998
 	ErrorCodeUnknown               = -39999 // FIXME: find a better number
 )
 
