@@ -233,7 +233,7 @@ which accepts a path for the resulting pprof file.
 	cmd.Flags().String(srvflags.BundlerBeneficiaryAddress, "", "Address to receive funds")
 	cmd.Flags().String(srvflags.BundlerEntryPointAddress, "", "Address of the supported EntryPoint contract")
 	cmd.Flags().String(srvflags.BundlerMinBalance, "0x0", "Below this signer balance, keep fee for itself, ignoring \"beneficiary\" address. Accept hexadecimal string with 0x prefix")
-	cmd.Flags().Bool(srvflags.BundlerSignerAddress, false, "Address of signer account in hexadecimal format")
+	cmd.Flags().String(srvflags.BundlerSignerAddress, "", "Address of signer account in hexadecimal format")
 
 	cmd.Flags().Bool(srvflags.BundlerAutoBundle, false, "Automatic bundling. Ignore auto-bundle-interval and auto-bundle-mempool-size if it is set to \"true\"")
 	cmd.Flags().StringSlice(srvflags.BundlerWhitelist, []string{}, "Whitelist addresses")
