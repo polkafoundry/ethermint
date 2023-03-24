@@ -584,7 +584,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 
 		mempoolManager := eip4337.NewMempoolManager(reputationManager)
 		validationManager := eip4337.NewValidationManager(entryPoint, reputationManager, false)
-		eventsManager = eip4337.NewEventsManager(entryPoint, mempoolManager, reputationManager)
+		eventsManager = eip4337.NewEventsManager(provider, entryPoint, mempoolManager, reputationManager)
 
 		minSignerBalance, _ := new(big.Int).SetString(config.Bundler.MinBalance[2:], 16)
 		bundleManager := eip4337.NewBundleManager(
@@ -667,6 +667,10 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 	// wait for json rpc server started successfully, init event listeners for bundler
 	if eventsManager != nil {
 		err := eventsManager.InitEventListener()
+		if err != nil {
+			return err
+		}
+		err = eventsManager.HandlePastEvents()
 		if err != nil {
 			return err
 		}

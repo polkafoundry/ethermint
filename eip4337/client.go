@@ -3,6 +3,7 @@ package eip4337
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
@@ -149,7 +150,7 @@ func (client *LocalClient) FilterLogs(ctx context.Context, query ethereum.Filter
 	}
 
 	// Run the filter and return all the logs
-	logs, err := filter.Logs(ctx, int(client.backend.RPCLogsCap()), int64(client.backend.RPCBlockRangeCap()))
+	logs, err := filter.Logs(ctx, math.MaxInt, math.MaxInt64)
 	if err != nil {
 		return nil, err
 	}

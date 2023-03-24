@@ -19,6 +19,7 @@ type IEventsManager interface {
 
 type EventsManager struct {
 	lastBlock         uint64
+	provider          IProvider
 	entryPoint        entrypoint_interface.IEntryPoint
 	mempoolManager    IMempoolManager
 	reputationManager IReputationManager
@@ -35,9 +36,10 @@ type EventsManager struct {
 
 var _ IEventsManager = (*EventsManager)(nil)
 
-func NewEventsManager(entryPoint entrypoint_interface.IEntryPoint, mempoolManager IMempoolManager, reputationManager IReputationManager) *EventsManager {
+func NewEventsManager(provider IProvider, entryPoint entrypoint_interface.IEntryPoint, mempoolManager IMempoolManager, reputationManager IReputationManager) *EventsManager {
 	return &EventsManager{
 		lastBlock:         0, // FIXME: since the rpc limit number of logs returned, correct this
+		provider:          provider,
 		entryPoint:        entryPoint,
 		mempoolManager:    mempoolManager,
 		reputationManager: reputationManager,
@@ -175,6 +177,11 @@ func (manager *EventsManager) HandlePastEvents() error {
 	manager.mtx.Lock()
 	defer manager.mtx.Unlock()
 
+	currentHeader := manager.provider.CurrentHeader()
+	if currentHeader == nil {
+		return errors.New("currentHeader is nil")
+	}
+
 	iterator, err := manager.entryPoint.FilterLogs(&bind.FilterOpts{Start: manager.lastBlock}, []interface{}{manager.entryPoint.Address()})
 	if err != nil {
 		return err
@@ -183,6 +190,8 @@ func (manager *EventsManager) HandlePastEvents() error {
 	for iterator.Next() {
 		manager.handleEvent(iterator.Event)
 	}
+
+	manager.lastBlock = currentHeader.Number.Uint64()
 
 	return nil
 }
