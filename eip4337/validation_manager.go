@@ -60,8 +60,8 @@ func NewReturnInfo(returnInfo entrypoint_interface.ReturnInfo) ReturnInfo {
 		PreOpGas:         nil,
 		Prefund:          nil,
 		SigFailed:        returnInfo.SigFailed,
-		ValidAfter:       returnInfo.ValidAfter,
-		ValidUntil:       returnInfo.ValidUntil,
+		ValidAfter:       0,
+		ValidUntil:       0,
 		PaymasterContext: common.CopyBytes(returnInfo.PaymasterContext),
 	}
 	if returnInfo.PreOpGas != nil {
@@ -69,6 +69,12 @@ func NewReturnInfo(returnInfo entrypoint_interface.ReturnInfo) ReturnInfo {
 	}
 	if returnInfo.Prefund != nil {
 		ret.Prefund = new(big.Int).Set(returnInfo.Prefund)
+	}
+	if returnInfo.ValidAfter != nil {
+		ret.ValidAfter = returnInfo.ValidAfter.Uint64()
+	}
+	if returnInfo.ValidUntil != nil {
+		ret.ValidUntil = returnInfo.ValidUntil.Uint64()
 	}
 	return ret
 }
@@ -203,7 +209,7 @@ func (manager *ValidationManager) callSimulateValidation(op types.UserOperation)
 
 	return ValidationResult{}, NewRPCError(
 		ErrorCodeUnknown,
-		err.Error(),
+		callErr.Error(),
 		nil,
 	)
 }
@@ -314,7 +320,7 @@ func CalcPreVerificationGas(op types.UserOperation, overheads GasOverheads) *big
 	}
 
 	packed := PackUserOp(op, false)
-	lengthInWord := int64((len(packed) + 31) / 32)
+	lengthInWord := float64(len(packed)+31) / 32
 	callDataCost := int64(0)
 	for _, x := range packed {
 		if x == 0 {
@@ -324,6 +330,6 @@ func CalcPreVerificationGas(op types.UserOperation, overheads GasOverheads) *big
 		}
 	}
 
-	ret := callDataCost + int64(math.Round(float64(overheads.Fixed)/float64(overheads.BundleSize))) + overheads.PerUserOp + overheads.PerUserOpWord*lengthInWord
+	ret := callDataCost + int64(math.Round(float64(overheads.Fixed)/float64(overheads.BundleSize)+float64(overheads.PerUserOpWord)*lengthInWord)) + overheads.PerUserOp
 	return big.NewInt(ret)
 }
