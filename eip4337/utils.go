@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/evmos/ethermint/eip4337/types"
 	rpctypes "github.com/evmos/ethermint/rpc/types"
@@ -48,7 +49,8 @@ func GetUserOpHash(userOp types.UserOperation, entryPointAddress common.Address,
 
 	var innerHash common.Hash
 	sha.Reset()
-	_, _ = sha.Write(PackUserOp(userOp, true))
+	packed := PackUserOp(userOp, true)
+	_, _ = sha.Write(packed)
 	_, _ = sha.Read(innerHash[:])
 
 	sha.Reset()
@@ -64,17 +66,17 @@ func PackUserOp(op types.UserOperation, forSignature bool) []byte {
 	bytesType, _ := abi.NewType("bytes", "", nil)
 
 	arguments := abi.Arguments{
-		{Type: addressType},
-		{Type: uint256Type},
-		{Type: uint256Type},
-		{Type: bytesType},
-		{Type: bytesType},
-		{Type: uint256Type},
-		{Type: uint256Type},
-		{Type: uint256Type},
-		{Type: uint256Type},
-		{Type: bytesType},
-		{Type: bytesType},
+		{Type: addressType}, // sender: *common.Address
+		{Type: uint256Type}, // nonce: *big.Int
+		{Type: bytesType},   // initCode: []byte
+		{Type: bytesType},   // callData: []byte
+		{Type: uint256Type}, // callGasLimit: *big.Int
+		{Type: uint256Type}, // verificationGasLimit: *big.Int
+		{Type: uint256Type}, // preVerificationGas: *bit.Int
+		{Type: uint256Type}, // maxFeePerGas: *big.Int
+		{Type: uint256Type}, // maxPriorityFeePerGas: *big.Int
+		{Type: bytesType},   // paymasterAndData: []byte
+		{Type: bytesType},   // signature: []byte
 	}
 
 	values := []interface{}{
@@ -93,11 +95,11 @@ func PackUserOp(op types.UserOperation, forSignature bool) []byte {
 	if forSignature {
 		values = append(values, []byte{})
 		bz, _ := arguments.Pack(values...)
-		return bz[32 : len(bz)-32]
+		return bz[:len(bz)-32]
 	}
 
-	values = append(values, op.Signature)
-	bz, _ := arguments.Pack(values)
+	values = append(values, op.Signature())
+	bz, _ := arguments.Pack(values...)
 
 	return bz
 }
@@ -115,4 +117,22 @@ func toBlockNumberArg(bn *big.Int) rpctypes.BlockNumber {
 		return rpctypes.EthLatestBlockNumber
 	}
 	return rpctypes.BlockNumber(bn.Int64())
+}
+
+// addrToAddrPtr return a pointer to a copy of an address.
+// Zero address is considered nil
+func addrToAddrPtr(addr common.Address) *common.Address {
+	if addr.String() == "0x0000000000000000000000000000000000000000" {
+		return nil
+	}
+	cpy := addr
+	return &cpy
+}
+
+func toHexUtilUint64(v uint64) *hexutil.Uint64 {
+	if v == 0 {
+		return nil
+	}
+	cpy := v
+	return (*hexutil.Uint64)(&cpy)
 }

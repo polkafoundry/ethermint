@@ -69,8 +69,8 @@ type ReturnInfo struct {
 	PreOpGas         *big.Int
 	Prefund          *big.Int
 	SigFailed        bool
-	ValidAfter       uint64
-	ValidUntil       uint64
+	ValidAfter       *big.Int
+	ValidUntil       *big.Int
 	PaymasterContext []byte
 }
 
@@ -899,7 +899,7 @@ func (_EntryPoint *EntryPointErrorDecoder) DecodeFailedOp(orgErr error) (FailedO
 
 	de, ok := orgErr.(DataError)
 	if !ok {
-		return ret, fmt.Errorf("expect error type %T got %T", (DataError)(nil), orgErr)
+		return ret, fmt.Errorf("cannot read data from error: %s", orgErr)
 	}
 
 	dataHex, ok := de.ErrorData().(string)
@@ -936,7 +936,7 @@ func (_EntryPoint *EntryPointErrorDecoder) DecodeValidationResult(orgErr error) 
 
 	de, ok := orgErr.(DataError)
 	if !ok {
-		return ret, fmt.Errorf("expect error type %T got %T", (DataError)(nil), orgErr)
+		return ret, fmt.Errorf("cannot read data from error: %s", orgErr)
 	}
 
 	dataHex, ok := de.ErrorData().(string)
@@ -960,6 +960,7 @@ func (_EntryPoint *EntryPointErrorDecoder) DecodeValidationResult(orgErr error) 
 	if err != nil {
 		return ret, err
 	}
+	fmt.Println(unpacked)
 	err = e.Inputs.Copy(&ret, unpacked)
 	return ret, err
 }
@@ -973,7 +974,7 @@ func (_EntryPoint *EntryPointErrorDecoder) DecodeValidationResultWithAggregation
 
 	de, ok := orgErr.(DataError)
 	if !ok {
-		return ret, fmt.Errorf("expect error type %T got %T", (DataError)(nil), orgErr)
+		return ret, fmt.Errorf("cannot read data from error: %s", orgErr)
 	}
 
 	dataHex, ok := de.ErrorData().(string)
@@ -1010,7 +1011,7 @@ func (_EntryPoint *EntryPointErrorDecoder) DecodeString(orgErr error) (string, e
 
 	de, ok := orgErr.(DataError)
 	if !ok {
-		return ret, fmt.Errorf("expect error type %T got %T", (DataError)(nil), orgErr)
+		return ret, fmt.Errorf("cannot read data from error: %s", orgErr)
 	}
 
 	dataHex, ok := de.ErrorData().(string)

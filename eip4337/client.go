@@ -45,9 +45,9 @@ func (client *LocalClient) CodeAt(_ context.Context, contract common.Address, bl
 func (client *LocalClient) CallContract(_ context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	bn := toBlockNumberArg(blockNumber)
 	resp, err := client.backend.DoCall(evmtypes.TransactionArgs{
-		From:                 &call.From,
+		From:                 addrToAddrPtr(call.From),
 		To:                   call.To,
-		Gas:                  (*hexutil.Uint64)(&call.Gas),
+		Gas:                  toHexUtilUint64(call.Gas),
 		GasPrice:             (*hexutil.Big)(call.GasPrice),
 		MaxFeePerGas:         (*hexutil.Big)(call.GasFeeCap),
 		MaxPriorityFeePerGas: (*hexutil.Big)(call.GasTipCap),
@@ -99,9 +99,9 @@ func (client *LocalClient) SuggestGasTipCap(_ context.Context) (*big.Int, error)
 func (client *LocalClient) EstimateGas(_ context.Context, call ethereum.CallMsg) (uint64, error) {
 	bn := rpctypes.EthPendingBlockNumber
 	gas, err := client.backend.EstimateGas(evmtypes.TransactionArgs{
-		From:                 &call.From,
+		From:                 addrToAddrPtr(call.From),
 		To:                   call.To,
-		Gas:                  (*hexutil.Uint64)(&call.Gas),
+		Gas:                  toHexUtilUint64(call.Gas),
 		GasPrice:             (*hexutil.Big)(call.GasPrice),
 		MaxFeePerGas:         (*hexutil.Big)(call.GasFeeCap),
 		MaxPriorityFeePerGas: (*hexutil.Big)(call.GasTipCap),
