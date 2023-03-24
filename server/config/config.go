@@ -114,7 +114,7 @@ func DefaultBundlerConfig() *BundlerConfig {
 		AutoBundle:            false,
 		Whitelist:             []string{},
 		Blacklist:             []string{},
-		MaxBundleGas:          0,
+		MaxBundleGas:          2500000,
 		MinStake:              "0x0",
 		MinUnstakeDelay:       0,
 		AutoBundleInterval:    0,

@@ -21,6 +21,7 @@ type IProvider interface {
 	GetTransactionCount(address common.Address) (uint64, error)
 	GetTransactionReceipt(txHash common.Hash) (*ethtypes.Receipt, error)
 	EstimateGas(call ethereum.CallMsg) (uint64, error)
+	CurrentHeader() *ethtypes.Header
 }
 
 type Provider struct {
@@ -103,6 +104,11 @@ func (provider *Provider) GetTransactionReceipt(txHash common.Hash) (*ethtypes.R
 	if err != nil {
 		return nil, err
 	}
+
+	if receiptMap == nil {
+		return nil, ethereum.NotFound
+	}
+
 	receipt := &ethtypes.Receipt{
 		Type:              0,
 		PostState:         nil,
@@ -159,4 +165,8 @@ func (provider *Provider) GetTransactionReceipt(txHash common.Hash) (*ethtypes.R
 	}
 
 	return receipt, nil
+}
+
+func (provider *Provider) CurrentHeader() *ethtypes.Header {
+	return provider.backend.CurrentHeader()
 }

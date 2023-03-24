@@ -170,6 +170,7 @@ func (manager *BundleManager) prepareBundleTx(bundle []types.UserOperation, bene
 
 		tx, err := manager.entryPoint.Transactor().HandleOps(&bind.TransactOpts{
 			NoSend:   true,
+			From:     manager.signer.GetAddress(),
 			GasPrice: gasPrice,
 			Signer: func(_ common.Address, transaction *ethtypes.Transaction) (*ethtypes.Transaction, error) {
 				return manager.signer.SignTx(transaction)

@@ -251,7 +251,7 @@ func (manager *ReputationManager) ClearState() {
 }
 
 func (manager *ReputationManager) Dump() []ReputationEntry {
-	manager.mtx.RUnlock()
+	manager.mtx.RLock()
 	defer manager.mtx.RUnlock()
 	entries := make([]ReputationEntry, 0)
 	for _, entry := range manager.entries {
