@@ -152,8 +152,8 @@ func (provider *Provider) GetTransactionReceipt(txHash common.Hash) (*ethtypes.R
 		receipt.GasUsed = uint64(v)
 	}
 
-	if v, ok := receiptMap["blockHash"].(common.Hash); ok {
-		receipt.BlockHash = v
+	if v, ok := receiptMap["blockHash"].(string); ok {
+		receipt.BlockHash = common.HexToHash(v)
 	}
 
 	if v, ok := receiptMap["blockNumber"].(hexutil.Uint64); ok {
