@@ -3,6 +3,8 @@ package entrypoint_interface
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -11,7 +13,8 @@ import (
 type EntryPointEventIterator struct {
 	Event interface{}
 
-	abi abi.ABI
+	abi      abi.ABI
+	contract *bind.BoundContract
 
 	logs chan types.Log
 	sub  ethereum.Subscription
@@ -34,52 +37,46 @@ func (it *EntryPointEventIterator) unpackEventLog(log types.Log) (interface{}, e
 	}
 
 	// FIXME: find a better solution
-	var out interface{}
 	switch abiEvent.RawName {
 	case "AccountDeployed":
-		out = EntryPointAccountDeployed{Raw: log}
+		out := &EntryPointAccountDeployed{Raw: log}
+		err := it.contract.UnpackLog(out, abiEvent.RawName, log)
+		return out, err
 	case "Deposited":
-		out = EntryPointDeposited{Raw: log}
+		out := &EntryPointDeposited{Raw: log}
+		err := it.contract.UnpackLog(out, abiEvent.RawName, log)
+		return out, err
 	case "SignatureAggregatorChanged":
-		out = EntryPointSignatureAggregatorChanged{Raw: log}
+		out := &EntryPointSignatureAggregatorChanged{Raw: log}
+		err := it.contract.UnpackLog(out, abiEvent.RawName, log)
+		return out, err
 	case "StakeLocked":
-		out = EntryPointStakeLocked{Raw: log}
+		out := &EntryPointStakeLocked{Raw: log}
+		err := it.contract.UnpackLog(out, abiEvent.RawName, log)
+		return out, err
 	case "StakeUnlocked":
-		out = EntryPointStakeUnlocked{Raw: log}
+		out := &EntryPointStakeUnlocked{Raw: log}
+		err := it.contract.UnpackLog(out, abiEvent.RawName, log)
+		return out, err
 	case "StakeWithdrawn":
-		out = EntryPointStakeWithdrawn{Raw: log}
+		out := &EntryPointStakeWithdrawn{Raw: log}
+		err := it.contract.UnpackLog(out, abiEvent.RawName, log)
+		return out, err
 	case "UserOperationEvent":
-		out = EntryPointUserOperationEvent{Raw: log}
+		out := &EntryPointUserOperationEvent{Raw: log}
+		err := it.contract.UnpackLog(out, abiEvent.RawName, log)
+		return out, err
 	case "UserOperationRevertReason":
-		out = EntryPointUserOperationRevertReason{Raw: log}
+		out := &EntryPointUserOperationRevertReason{Raw: log}
+		err := it.contract.UnpackLog(out, abiEvent.RawName, log)
+		return out, err
 	case "Withdrawn":
-		out = EntryPointWithdrawn{Raw: log}
+		out := &EntryPointWithdrawn{Raw: log}
+		err := it.contract.UnpackLog(out, abiEvent.RawName, log)
+		return out, err
 	default:
 		return nil, fmt.Errorf("unknown abi")
 	}
-
-	if len(log.Data) > 0 {
-		unpacked, err := abiEvent.Inputs.Unpack(log.Data)
-		if err != nil {
-			return nil, err
-		}
-		err = abiEvent.Inputs.Copy(out, unpacked)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var indexed abi.Arguments
-	for _, arg := range abiEvent.Inputs {
-		if arg.Indexed {
-			indexed = append(indexed, arg)
-		}
-	}
-	err := abi.ParseTopics(out, indexed, log.Topics[1:])
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (it *EntryPointEventIterator) Next() bool {

@@ -541,8 +541,8 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 	}
 
 	var (
-		additionalAPIs []ethrpc.API
-		eventsManager  eip4337.IEventsManager
+		additionalAPIs   []ethrpc.API
+		executionManager *eip4337.ExecutionManager
 	)
 
 	// bundler can be enabled only if json rpc is enabled as well
@@ -584,7 +584,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 
 		mempoolManager := eip4337.NewMempoolManager(reputationManager)
 		validationManager := eip4337.NewValidationManager(entryPoint, reputationManager, false)
-		eventsManager = eip4337.NewEventsManager(provider, entryPoint, mempoolManager, reputationManager)
+		eventsManager := eip4337.NewEventsManager(provider, entryPoint, mempoolManager, reputationManager)
 
 		minSignerBalance, _ := new(big.Int).SetString(config.Bundler.MinBalance[2:], 16)
 		bundleManager := eip4337.NewBundleManager(
@@ -600,7 +600,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 			minSignerBalance,
 			config.Bundler.MaxBundleGas,
 		)
-		executionManager := eip4337.NewExecutionManager(ctx.Logger, provider, entryPoint, bundleManager, mempoolManager, reputationManager, validationManager, eventsManager)
+		executionManager = eip4337.NewExecutionManager(ctx.Logger, provider, entryPoint, bundleManager, mempoolManager, reputationManager, validationManager, eventsManager)
 
 		// it is okay to start bundling interval since the mempool is empty at the moment
 		if config.Bundler.AutoBundle {
@@ -665,12 +665,8 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 	}
 
 	// wait for json rpc server started successfully, init event listeners for bundler
-	if eventsManager != nil {
-		err := eventsManager.InitEventListener()
-		if err != nil {
-			return err
-		}
-		err = eventsManager.HandlePastEvents()
+	if executionManager != nil {
+		err := executionManager.Initialize()
 		if err != nil {
 			return err
 		}
