@@ -172,13 +172,80 @@ func (manager *ExecutionManager) EstimateUserOperationGas(userOpArgs types.UserO
 	}, nil
 }
 
+func (manager *ExecutionManager) GetUserOperationByHash(userOpHash common.Hash) (*types.UserOperationByHashResponse, error) {
+	iterator, err := manager.entryPoint.Filterer().FilterUserOperationEvent(&bind.FilterOpts{}, [][32]byte{userOpHash}, []common.Address{}, []common.Address{})
+	if err != nil {
+		return nil, NewRPCError(ErrorCodeUnknown, fmt.Sprintf("cannot filter event: %s", err.Error()), nil)
+	}
+	defer iterator.Close()
+
+	if !iterator.Next() {
+		if iterator.Error() != nil {
+			return nil, NewRPCError(ErrorCodeUnknown, iterator.Error().Error(), nil)
+		}
+		return nil, nil
+	}
+
+	evt := iterator.Event
+	tx, err := manager.provider.GetTransactionByHash(evt.Raw.TxHash)
+	if err != nil {
+		return nil, NewRPCError(ErrorCodeUnknown, fmt.Sprintf("cannot find tx: %s", err.Error()), nil)
+	}
+
+	if tx.To().Hex() != manager.entryPoint.Address().Hex() {
+		return nil, NewRPCError(ErrorCodeUnknown, fmt.Sprintf("cannot parse transaction"), nil)
+	}
+
+	userOps, _, err := manager.entryPoint.Decoder().DecodeHandleOps(tx.Data())
+	if err != nil {
+		return nil, NewRPCError(ErrorCodeUnknown, fmt.Sprintf("cannot decode tx data: %s", err.Error()), nil)
+	}
+
+	receipt, err := manager.provider.GetTransactionReceipt(evt.Raw.TxHash)
+	if err != nil {
+		return nil, NewRPCError(ErrorCodeUnknown, fmt.Sprintf("cannot get transaction receipt: %s", err.Error()), nil)
+	}
+
+	entryPointAddr := manager.entryPoint.Address()
+
+	for _, userOp := range userOps {
+		if userOp.Sender.Hex() == evt.Sender.Hex() && userOp.Nonce.Cmp(evt.Nonce) == 0 {
+			return &types.UserOperationByHashResponse{
+				UserOperation: types.UserOperationResponse{
+					Sender:               &userOp.Sender,
+					Nonce:                (*hexutil.Big)(userOp.Nonce),
+					InitCode:             (*hexutil.Bytes)(&userOp.InitCode),
+					CallData:             (*hexutil.Bytes)(&userOp.CallData),
+					CallGasLimit:         (*hexutil.Big)(userOp.CallGasLimit),
+					VerificationGasLimit: (*hexutil.Big)(userOp.VerificationGasLimit),
+					PreVerificationGas:   (*hexutil.Big)(userOp.PreVerificationGas),
+					MaxFeePerGas:         (*hexutil.Big)(userOp.MaxFeePerGas),
+					MaxPriorityFeePerGas: (*hexutil.Big)(userOp.MaxPriorityFeePerGas),
+					PaymasterAndData:     (*hexutil.Bytes)(&userOp.PaymasterAndData),
+					Signature:            (*hexutil.Bytes)(&userOp.Signature),
+				},
+				EntryPoint:      &entryPointAddr,
+				BlockNumber:     (*hexutil.Big)(receipt.BlockNumber),
+				BlockHash:       &receipt.BlockHash,
+				TransactionHash: &receipt.TxHash,
+			}, nil
+		}
+	}
+
+	return nil, NewRPCError(ErrorCodeUnknown, fmt.Sprintf("cannot find userOp in transaction"), nil)
+}
+
 func (manager *ExecutionManager) GetUserOperationReceipt(userOpHash common.Hash) (*types.UserOperationReceipt, error) {
 	iterator, err := manager.entryPoint.Filterer().FilterUserOperationEvent(&bind.FilterOpts{}, [][32]byte{userOpHash}, []common.Address{}, []common.Address{})
 	if err != nil {
 		return nil, NewRPCError(ErrorCodeUnknown, fmt.Sprintf("cannot filter event: %s", err.Error()), nil)
 	}
 	defer iterator.Close()
+
 	if !iterator.Next() {
+		if iterator.Error() != nil {
+			return nil, NewRPCError(ErrorCodeUnknown, iterator.Error().Error(), nil)
+		}
 		return nil, nil
 	}
 

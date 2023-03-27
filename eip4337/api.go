@@ -8,6 +8,7 @@ import (
 type IPublicAPI interface {
 	SendUserOperation(userOpArgs types.UserOperationArgs, entryPoint common.Address) (common.Hash, error)
 	EstimateUserOperationGas(userOpArgs types.UserOperationArgs, entryPoint common.Address) (*types.EstimateUserOpGasResult, error)
+	GetUserOperationByHash(userOpHash common.Hash) (*types.UserOperationByHashResponse, error)
 	GetUserOperationReceipt(userOpHash common.Hash) (*types.UserOperationReceipt, error)
 	SupportedEntryPoints() ([]common.Address, error)
 }
@@ -30,6 +31,10 @@ func (api *PublicAPI) SendUserOperation(userOpArgs types.UserOperationArgs, entr
 
 func (api *PublicAPI) EstimateUserOperationGas(userOpArgs types.UserOperationArgs, entryPoint common.Address) (*types.EstimateUserOpGasResult, error) {
 	return api.executionManager.EstimateUserOperationGas(userOpArgs, entryPoint)
+}
+
+func (api *PublicAPI) GetUserOperationByHash(userOpHash common.Hash) (*types.UserOperationByHashResponse, error) {
+	return api.executionManager.GetUserOperationByHash(userOpHash)
 }
 
 func (api *PublicAPI) GetUserOperationReceipt(userOpHash common.Hash) (*types.UserOperationReceipt, error) {

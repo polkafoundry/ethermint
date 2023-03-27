@@ -203,7 +203,7 @@ func (manager *BundleManager) handleFailedOps(bundle []types.UserOperation, bene
 	if strings.Contains(err.Error(), "execution reverted") {
 		return bundle, err
 	}
-	failedOpError, decodeErr := manager.entryPoint.ErrorDecoder().DecodeFailedOp(err)
+	failedOpError, decodeErr := manager.entryPoint.Decoder().DecodeErrorFailedOp(err)
 	if err != nil {
 		return bundle, decodeErr
 	}

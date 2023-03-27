@@ -201,6 +201,14 @@ type UserOperationResponse struct {
 	Signature            *hexutil.Bytes  `json:"signature,omitempty"`
 }
 
+type UserOperationByHashResponse struct {
+	UserOperation   UserOperationResponse `json:"userOperation"`
+	EntryPoint      *common.Address       `json:"entryPoint"`
+	BlockNumber     *hexutil.Big          `json:"blockNumber"`
+	BlockHash       *common.Hash          `json:"blockHash"`
+	TransactionHash *common.Hash          `json:"transactionHash"`
+}
+
 func ToUserOperationResponse(userOp UserOperation) UserOperationResponse {
 	initCode := userOp.InitCode()
 	callData := userOp.CallData()
