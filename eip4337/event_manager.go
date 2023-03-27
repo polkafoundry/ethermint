@@ -14,6 +14,7 @@ import (
 type IEventsManager interface {
 	InitEventListener() error
 	HandlePastEvents() error
+	InitialHandlePastEvents() error
 	Stop()
 }
 
@@ -182,7 +183,7 @@ func (manager *EventsManager) HandlePastEvents() error {
 		return errors.New("currentHeader is nil")
 	}
 
-	iterator, err := manager.entryPoint.FilterLogs(&bind.FilterOpts{Start: manager.lastBlock}, []interface{}{manager.entryPoint.Address()})
+	iterator, err := manager.entryPoint.FilterLogs(&bind.FilterOpts{Start: manager.lastBlock})
 	if err != nil {
 		return err
 	}
@@ -192,6 +193,32 @@ func (manager *EventsManager) HandlePastEvents() error {
 	}
 
 	manager.lastBlock = currentHeader.Number.Uint64()
+
+	return nil
+}
+
+func (manager *EventsManager) InitialHandlePastEvents() error {
+	manager.mtx.Lock()
+	defer manager.mtx.Unlock()
+
+	currentHeader := manager.provider.CurrentHeader()
+	if currentHeader == nil {
+		return errors.New("currentHeader is nil")
+	}
+
+	manager.lastBlock = currentHeader.Number.Uint64() - 86400
+	if manager.lastBlock < 0 {
+		manager.lastBlock = 0
+	}
+
+	iterator, err := manager.entryPoint.FilterLogs(&bind.FilterOpts{Start: manager.lastBlock})
+	if err != nil {
+		return err
+	}
+
+	for iterator.Next() {
+		manager.handleEvent(iterator.Event)
+	}
 
 	return nil
 }

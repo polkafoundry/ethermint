@@ -339,7 +339,7 @@ func (manager *ExecutionManager) SetReputation(reputation types.ReputationArgs) 
 	return nil
 }
 
-func (manager *ExecutionManager) Bundler_dumpReputation() ([]types.ReputationResponse, error) {
+func (manager *ExecutionManager) DumpReputation() ([]types.ReputationResponse, error) {
 	entries := manager.reputationManager.Dump()
 	response := make([]types.ReputationResponse, len(entries))
 	for idx, entry := range entries {
@@ -351,4 +351,17 @@ func (manager *ExecutionManager) Bundler_dumpReputation() ([]types.ReputationRes
 		}
 	}
 	return response, nil
+}
+
+func (manager *ExecutionManager) Initialize() error {
+	// FIXME: do we really need to lock here?
+	err := manager.eventsManager.InitEventListener()
+	if err != nil {
+		return errors.Wrap(err, "failed to init event listener")
+	}
+	err = manager.eventsManager.InitialHandlePastEvents()
+	if err != nil {
+		return errors.Wrap(err, "failed to initial handle past events")
+	}
+	return nil
 }

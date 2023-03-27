@@ -90,5 +90,5 @@ func (api *DebugPublicAPI) Bundler_setReputation(reputation types.ReputationArgs
 }
 
 func (api *DebugPublicAPI) Bundler_dumpReputation() ([]types.ReputationResponse, error) {
-	return api.executionManager.Bundler_dumpReputation()
+	return api.executionManager.DumpReputation()
 }

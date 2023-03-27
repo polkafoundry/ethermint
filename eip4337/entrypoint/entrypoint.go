@@ -878,7 +878,7 @@ func (_EntryPoint *EntryPoint) FilterLogs(opts *bind.FilterOpts, query ...[]inte
 		return nil, err
 	}
 
-	return &EntryPointEventIterator{abi: _EntryPoint.abi, logs: logs, sub: sub}, nil
+	return &EntryPointEventIterator{abi: _EntryPoint.abi, contract: _EntryPoint.contract, logs: logs, sub: sub}, nil
 }
 
 type EntryPointErrorDecoder struct {
@@ -1033,6 +1033,7 @@ type EntryPoint struct {
 	address      common.Address
 	abi          abi.ABI
 	backend      bind.ContractBackend
+	contract     *bind.BoundContract
 	caller       IEntryPointCaller
 	transactor   IEntryPointTransactor
 	filterer     IEntryPointFilterer
@@ -1071,6 +1072,7 @@ func NewEntryPoint(address common.Address, backend bind.ContractBackend) (*Entry
 	return &EntryPoint{
 		address:      address,
 		abi:          abi,
+		contract:     contract,
 		backend:      backend,
 		caller:       &EntryPointCaller{contract: contract},
 		transactor:   &EntryPointTransactor{contract: contract},
