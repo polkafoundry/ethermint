@@ -12,13 +12,6 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	ethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/evmos/ethermint/eip4337"
-	entrypoint_interface "github.com/evmos/ethermint/eip4337/entrypoint"
-	"github.com/evmos/ethermint/rpc/backend"
-	rpcfilters "github.com/evmos/ethermint/rpc/namespaces/ethereum/eth/filters"
-
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/telemetry"
@@ -41,7 +34,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/server/rosetta"
 	crgserver "github.com/cosmos/cosmos-sdk/server/rosetta/lib/server"
 
+	"github.com/ethereum/go-ethereum/common"
 	ethmetricsexp "github.com/ethereum/go-ethereum/metrics/exp"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	errorsmod "cosmossdk.io/errors"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -54,8 +49,12 @@ import (
 	"github.com/cosmos/cosmos-sdk/server/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	"github.com/evmos/ethermint/eip4337"
+	entrypoint_interface "github.com/evmos/ethermint/eip4337/entrypoint"
 	"github.com/evmos/ethermint/indexer"
+	"github.com/evmos/ethermint/rpc/backend"
 	ethdebug "github.com/evmos/ethermint/rpc/namespaces/ethereum/debug"
+	rpcfilters "github.com/evmos/ethermint/rpc/namespaces/ethereum/eth/filters"
 	"github.com/evmos/ethermint/server/config"
 	srvflags "github.com/evmos/ethermint/server/flags"
 	ethermint "github.com/evmos/ethermint/types"
