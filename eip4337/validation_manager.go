@@ -160,7 +160,7 @@ func (manager *ValidationManager) callSimulateValidation(op types.UserOperation)
 		return ValidationResult{}, NewRPCError(ErrorCodeUnknown, "invalid response, simulateValidation call must revert", nil)
 	}
 
-	validationResult, err := manager.entryPoint.ErrorDecoder().DecodeValidationResult(callErr)
+	validationResult, err := manager.entryPoint.Decoder().DecodeErrorValidationResult(callErr)
 	if err == nil {
 		return ValidationResult{
 			ReturnInfo:     NewReturnInfo(validationResult.ReturnInfo),
@@ -171,7 +171,7 @@ func (manager *ValidationManager) callSimulateValidation(op types.UserOperation)
 		}, nil
 	}
 
-	validationResultWithAggregation, err := manager.entryPoint.ErrorDecoder().DecodeValidationResultWithAggregation(callErr)
+	validationResultWithAggregation, err := manager.entryPoint.Decoder().DecodeErrorValidationResultWithAggregation(callErr)
 	if err == nil {
 		return ValidationResult{
 			ReturnInfo:     NewReturnInfo(validationResult.ReturnInfo),
@@ -182,7 +182,7 @@ func (manager *ValidationManager) callSimulateValidation(op types.UserOperation)
 		}, nil
 	}
 
-	failedOp, err := manager.entryPoint.ErrorDecoder().DecodeFailedOp(callErr)
+	failedOp, err := manager.entryPoint.Decoder().DecodeErrorFailedOp(callErr)
 	if err == nil {
 		if strings.HasPrefix(failedOp.Reason, "AA3") {
 			return ValidationResult{}, NewRPCError(
@@ -198,7 +198,7 @@ func (manager *ValidationManager) callSimulateValidation(op types.UserOperation)
 		)
 	}
 
-	msg, err := manager.entryPoint.ErrorDecoder().DecodeString(callErr)
+	msg, err := manager.entryPoint.Decoder().DecodeErrorString(callErr)
 	if err == nil {
 		return ValidationResult{}, NewRPCError(
 			ErrorCodeSimulateValidation,

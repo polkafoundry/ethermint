@@ -11,6 +11,7 @@ import (
 	"github.com/evmos/ethermint/rpc/backend"
 	rpctypes "github.com/evmos/ethermint/rpc/types"
 	evmtypes "github.com/evmos/ethermint/x/evm/types"
+	"github.com/pkg/errors"
 )
 
 type IProvider interface {
@@ -20,6 +21,7 @@ type IProvider interface {
 	GetBalance(address common.Address) (*big.Int, error)
 	GetTransactionCount(address common.Address) (uint64, error)
 	GetTransactionReceipt(txHash common.Hash) (*ethtypes.Receipt, error)
+	GetTransactionByHash(txHash common.Hash) (*ethtypes.Transaction, error)
 	EstimateGas(call ethereum.CallMsg) (uint64, error)
 	CurrentHeader() *ethtypes.Header
 }
@@ -165,6 +167,62 @@ func (provider *Provider) GetTransactionReceipt(txHash common.Hash) (*ethtypes.R
 	}
 
 	return receipt, nil
+}
+
+func (provider *Provider) GetTransactionByHash(txHash common.Hash) (*ethtypes.Transaction, error) {
+	tx, err := provider.backend.GetTransactionByHash(txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	var txData ethtypes.TxData
+	switch tx.Type {
+	case ethtypes.LegacyTxType:
+		txData = &ethtypes.LegacyTx{
+			Nonce:    uint64(tx.Nonce),
+			GasPrice: (*big.Int)(tx.GasPrice),
+			Gas:      uint64(tx.Gas),
+			To:       tx.To,
+			Value:    (*big.Int)(tx.Value),
+			Data:     tx.Input,
+			V:        (*big.Int)(tx.V),
+			R:        (*big.Int)(tx.R),
+			S:        (*big.Int)(tx.S),
+		}
+	case ethtypes.AccessListTxType:
+		txData = &ethtypes.AccessListTx{
+			ChainID:    (*big.Int)(tx.ChainID),
+			Nonce:      uint64(tx.Nonce),
+			GasPrice:   (*big.Int)(tx.GasPrice),
+			Gas:        uint64(tx.Gas),
+			To:         tx.To,
+			Value:      (*big.Int)(tx.Value),
+			Data:       tx.Input,
+			AccessList: *tx.Accesses,
+			V:          (*big.Int)(tx.V),
+			R:          (*big.Int)(tx.R),
+			S:          (*big.Int)(tx.S),
+		}
+	case ethtypes.DynamicFeeTxType:
+		txData = &ethtypes.DynamicFeeTx{
+			ChainID:    (*big.Int)(tx.ChainID),
+			Nonce:      uint64(tx.Nonce),
+			GasTipCap:  (*big.Int)(tx.GasTipCap),
+			GasFeeCap:  (*big.Int)(tx.GasFeeCap),
+			Gas:        uint64(tx.Gas),
+			To:         tx.To,
+			Value:      (*big.Int)(tx.Value),
+			Data:       tx.Input,
+			AccessList: *tx.Accesses,
+			V:          (*big.Int)(tx.V),
+			R:          (*big.Int)(tx.R),
+			S:          (*big.Int)(tx.S),
+		}
+	default:
+		return nil, errors.New("invalid transaction type")
+	}
+
+	return ethtypes.NewTx(txData), nil
 }
 
 func (provider *Provider) CurrentHeader() *ethtypes.Header {

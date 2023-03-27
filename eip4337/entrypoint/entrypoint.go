@@ -91,10 +91,10 @@ var EntryPointMetaData = &bind.MetaData{
 var EntryPointABI = EntryPointMetaData.ABI
 
 var (
-	_ IEntryPointCaller       = (*EntryPointCaller)(nil)
-	_ IEntryPointTransactor   = (*EntryPointTransactor)(nil)
-	_ IEntryPointFilterer     = (*EntryPointFilterer)(nil)
-	_ IEntryPointErrorDecoder = (*EntryPointErrorDecoder)(nil)
+	_ IEntryPointCaller     = (*EntryPointCaller)(nil)
+	_ IEntryPointTransactor = (*EntryPointTransactor)(nil)
+	_ IEntryPointFilterer   = (*EntryPointFilterer)(nil)
+	_ IEntryPointDecoder    = (*EntryPointDecoder)(nil)
 )
 
 type IEntryPointCaller interface {
@@ -148,11 +148,12 @@ type IEntryPointFilterer interface {
 	ParseWithdrawn(log types.Log) (*EntryPointWithdrawn, error)
 }
 
-type IEntryPointErrorDecoder interface {
-	DecodeFailedOp(error) (FailedOp, error)
-	DecodeValidationResult(error) (ValidationResult, error)
-	DecodeValidationResultWithAggregation(error) (ValidationResultWithAggregator, error)
-	DecodeString(error) (string, error)
+type IEntryPointDecoder interface {
+	DecodeErrorFailedOp(error) (FailedOp, error)
+	DecodeErrorValidationResult(error) (ValidationResult, error)
+	DecodeErrorValidationResultWithAggregation(error) (ValidationResultWithAggregator, error)
+	DecodeErrorString(error) (string, error)
+	DecodeHandleOps(data []byte) ([]UserOperation, common.Address, error)
 }
 
 type IEntryPoint interface {
@@ -160,7 +161,7 @@ type IEntryPoint interface {
 	Caller() IEntryPointCaller
 	Transactor() IEntryPointTransactor
 	Filterer() IEntryPointFilterer
-	ErrorDecoder() IEntryPointErrorDecoder
+	Decoder() IEntryPointDecoder
 	FilterLogs(opts *bind.FilterOpts, query ...[]interface{}) (*EntryPointEventIterator, error)
 }
 
@@ -881,7 +882,7 @@ func (_EntryPoint *EntryPoint) FilterLogs(opts *bind.FilterOpts, query ...[]inte
 	return &EntryPointEventIterator{abi: _EntryPoint.abi, contract: _EntryPoint.contract, logs: logs, sub: sub}, nil
 }
 
-type EntryPointErrorDecoder struct {
+type EntryPointDecoder struct {
 	abi abi.ABI
 }
 
@@ -890,7 +891,7 @@ type DataError interface {
 	ErrorData() interface{}
 }
 
-func (_EntryPoint *EntryPointErrorDecoder) DecodeFailedOp(orgErr error) (FailedOp, error) {
+func (_EntryPoint *EntryPointDecoder) DecodeErrorFailedOp(orgErr error) (FailedOp, error) {
 	var ret FailedOp
 
 	if orgErr == nil {
@@ -927,7 +928,7 @@ func (_EntryPoint *EntryPointErrorDecoder) DecodeFailedOp(orgErr error) (FailedO
 	return ret, err
 }
 
-func (_EntryPoint *EntryPointErrorDecoder) DecodeValidationResult(orgErr error) (ValidationResult, error) {
+func (_EntryPoint *EntryPointDecoder) DecodeErrorValidationResult(orgErr error) (ValidationResult, error) {
 	var ret ValidationResult
 
 	if orgErr == nil {
@@ -965,7 +966,7 @@ func (_EntryPoint *EntryPointErrorDecoder) DecodeValidationResult(orgErr error) 
 	return ret, err
 }
 
-func (_EntryPoint *EntryPointErrorDecoder) DecodeValidationResultWithAggregation(orgErr error) (ValidationResultWithAggregator, error) {
+func (_EntryPoint *EntryPointDecoder) DecodeErrorValidationResultWithAggregation(orgErr error) (ValidationResultWithAggregator, error) {
 	var ret ValidationResultWithAggregator
 
 	if orgErr == nil {
@@ -1002,7 +1003,7 @@ func (_EntryPoint *EntryPointErrorDecoder) DecodeValidationResultWithAggregation
 	return ret, err
 }
 
-func (_EntryPoint *EntryPointErrorDecoder) DecodeString(orgErr error) (string, error) {
+func (_EntryPoint *EntryPointDecoder) DecodeErrorString(orgErr error) (string, error) {
 	var ret string
 
 	if orgErr == nil {
@@ -1027,17 +1028,52 @@ func (_EntryPoint *EntryPointErrorDecoder) DecodeString(orgErr error) (string, e
 	return abi.UnpackRevert(data)
 }
 
+func (_EntryPoint *EntryPointDecoder) DecodeHandleOps(data []byte) ([]UserOperation, common.Address, error) {
+	method := _EntryPoint.abi.Methods["handleOps"]
+
+	if !bytes.Equal(data[:4], method.ID) {
+		return nil, common.Address{}, errors.New("invalid data for unpacking")
+	}
+
+	res, err := method.Inputs.Unpack(data[4:])
+	if err != nil {
+		return nil, common.Address{}, err
+	}
+
+	if len(res) != 2 {
+		return nil, common.Address{}, errors.New("invalid data for unpacking")
+	}
+
+	beneficiary, ok := abi.ConvertType(res[1], new(common.Address)).(*common.Address)
+	if !ok {
+		return nil, common.Address{}, errors.New("cannot convert type to common.Address")
+	}
+
+	fmt.Printf("%T", res[0])
+
+	var x []UserOperation
+
+	fmt.Printf("%T", x)
+
+	userOps, ok := abi.ConvertType(res[0], new([]UserOperation)).(*[]UserOperation)
+	if !ok {
+		return nil, common.Address{}, errors.New("cannot convert type to []UserOperation")
+	}
+
+	return *userOps, *beneficiary, nil
+}
+
 var _ IEntryPoint = (*EntryPoint)(nil)
 
 type EntryPoint struct {
-	address      common.Address
-	abi          abi.ABI
-	backend      bind.ContractBackend
-	contract     *bind.BoundContract
-	caller       IEntryPointCaller
-	transactor   IEntryPointTransactor
-	filterer     IEntryPointFilterer
-	errorDecoder IEntryPointErrorDecoder
+	address    common.Address
+	abi        abi.ABI
+	backend    bind.ContractBackend
+	contract   *bind.BoundContract
+	caller     IEntryPointCaller
+	transactor IEntryPointTransactor
+	filterer   IEntryPointFilterer
+	decoder    IEntryPointDecoder
 }
 
 func (_EntryPoint *EntryPoint) Address() common.Address {
@@ -1056,8 +1092,8 @@ func (_EntryPoint *EntryPoint) Filterer() IEntryPointFilterer {
 	return _EntryPoint.filterer
 }
 
-func (_EntryPoint *EntryPoint) ErrorDecoder() IEntryPointErrorDecoder {
-	return _EntryPoint.errorDecoder
+func (_EntryPoint *EntryPoint) Decoder() IEntryPointDecoder {
+	return _EntryPoint.decoder
 }
 
 func NewEntryPoint(address common.Address, backend bind.ContractBackend) (*EntryPoint, error) {
@@ -1070,14 +1106,14 @@ func NewEntryPoint(address common.Address, backend bind.ContractBackend) (*Entry
 		return nil, err
 	}
 	return &EntryPoint{
-		address:      address,
-		abi:          abi,
-		contract:     contract,
-		backend:      backend,
-		caller:       &EntryPointCaller{contract: contract},
-		transactor:   &EntryPointTransactor{contract: contract},
-		filterer:     &EntryPointFilterer{contract: contract},
-		errorDecoder: &EntryPointErrorDecoder{abi: abi},
+		address:    address,
+		abi:        abi,
+		contract:   contract,
+		backend:    backend,
+		caller:     &EntryPointCaller{contract: contract},
+		transactor: &EntryPointTransactor{contract: contract},
+		filterer:   &EntryPointFilterer{contract: contract},
+		decoder:    &EntryPointDecoder{abi: abi},
 	}, nil
 }
 
