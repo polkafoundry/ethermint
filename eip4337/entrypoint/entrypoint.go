@@ -961,7 +961,6 @@ func (_EntryPoint *EntryPointDecoder) DecodeErrorValidationResult(orgErr error) 
 	if err != nil {
 		return ret, err
 	}
-	fmt.Println(unpacked)
 	err = e.Inputs.Copy(&ret, unpacked)
 	return ret, err
 }
@@ -1048,12 +1047,6 @@ func (_EntryPoint *EntryPointDecoder) DecodeHandleOps(data []byte) ([]UserOperat
 	if !ok {
 		return nil, common.Address{}, errors.New("cannot convert type to common.Address")
 	}
-
-	fmt.Printf("%T", res[0])
-
-	var x []UserOperation
-
-	fmt.Printf("%T", x)
 
 	userOps, ok := abi.ConvertType(res[0], new([]UserOperation)).(*[]UserOperation)
 	if !ok {
