@@ -78,7 +78,7 @@ func ConnectTmWS(tmRPCAddr, tmEndpoint string, logger tmlog.Logger, options ...f
 		rpcclient.WriteWait(120 * time.Second),
 		rpcclient.PingPeriod(50 * time.Second),
 		rpcclient.OnReconnect(func() {
-			logger.Error("EVM RPC reconnects to Tendermint WS", "address", tmRPCAddr+tmEndpoint)
+			logger.Debug("EVM RPC reconnects to Tendermint WS", "address", tmRPCAddr+tmEndpoint)
 		}),
 	}
 	options = append(defaultOptions, options...)
