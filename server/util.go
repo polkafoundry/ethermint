@@ -71,16 +71,18 @@ func AddCommands(
 	)
 }
 
-func ConnectTmWS(tmRPCAddr, tmEndpoint string, logger tmlog.Logger) *rpcclient.WSClient {
-	tmWsClient, err := rpcclient.NewWS(tmRPCAddr, tmEndpoint,
+func ConnectTmWS(tmRPCAddr, tmEndpoint string, logger tmlog.Logger, options ...func(*rpcclient.WSClient)) *rpcclient.WSClient {
+	defaultOptions := []func(*rpcclient.WSClient){
 		rpcclient.MaxReconnectAttempts(256),
-		rpcclient.ReadWait(120*time.Second),
-		rpcclient.WriteWait(120*time.Second),
-		rpcclient.PingPeriod(50*time.Second),
+		rpcclient.ReadWait(120 * time.Second),
+		rpcclient.WriteWait(120 * time.Second),
+		rpcclient.PingPeriod(50 * time.Second),
 		rpcclient.OnReconnect(func() {
-			logger.Debug("EVM RPC reconnects to Tendermint WS", "address", tmRPCAddr+tmEndpoint)
+			logger.Error("EVM RPC reconnects to Tendermint WS", "address", tmRPCAddr+tmEndpoint)
 		}),
-	)
+	}
+	options = append(defaultOptions, options...)
+	tmWsClient, err := rpcclient.NewWS(tmRPCAddr, tmEndpoint, options...)
 
 	if err != nil {
 		logger.Error(
