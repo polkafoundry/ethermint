@@ -29,6 +29,7 @@ import (
 	pvm "github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/rpc/client/local"
+	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/cosmos/cosmos-sdk/server/rosetta"
@@ -546,14 +547,24 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 
 	// bundler can be enabled only if json rpc is enabled as well
 	if config.Bundler.Enable && config.JSONRPC.Enable {
-		evmBackend := backend.NewBackend(ctx, ctx.Logger, clientCtx, config.JSONRPC.AllowUnprotectedTxs, idxer)
+		eip4337Logger := ctx.Logger.With("extension", "eip4337")
+		evmBackend := backend.NewBackend(ctx, eip4337Logger, clientCtx, config.JSONRPC.AllowUnprotectedTxs, idxer)
 		signerAddress := common.HexToAddress(config.Bundler.SignerAddress)
-		signer := eip4337.NewSigner(ctx.Logger, clientCtx.Keyring, signerAddress, evmBackend)
-		provider := eip4337.NewProvider(ctx.Logger, evmBackend)
+		signer := eip4337.NewSigner(eip4337Logger, clientCtx.Keyring, signerAddress, evmBackend)
+		provider := eip4337.NewProvider(eip4337Logger, evmBackend)
 
-		tmWsClient := ConnectTmWS(cfg.RPC.ListenAddress, "/websocket", ctx.Logger)
-		eventsSystem := rpcfilters.NewEventSystem(logger, tmWsClient)
-		localClient := eip4337.NewLocalClient(ctx.Logger, eventsSystem, evmBackend)
+		// FIXME: it is safe to remove the deadline for read and write operation since the tendermint node is local.
+		// Do we even use remote tendermint?
+		tmWsClient := ConnectTmWS(
+			cfg.RPC.ListenAddress,
+			"/websocket",
+			eip4337Logger,
+			rpcclient.ReadWait(0),
+			rpcclient.WriteWait(0),
+			rpcclient.PingPeriod(5*time.Second),
+		)
+		eventsSystem := rpcfilters.NewEventSystem(eip4337Logger, tmWsClient)
+		localClient := eip4337.NewLocalClient(eip4337Logger, eventsSystem, evmBackend)
 
 		entryPointAddress := common.HexToAddress(config.Bundler.EntryPointAddress)
 		entryPoint, err := entrypoint_interface.NewEntryPoint(entryPointAddress, localClient)
@@ -564,7 +575,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 		// safe to do because the config is validated
 		minStake, _ := new(big.Int).SetString(config.Bundler.MinStake[2:], 16)
 		reputationManager := eip4337.NewReputationManager(
-			ctx.Logger,
+			eip4337Logger,
 			eip4337.DefaultBundlerReputationParams(),
 			minStake,
 			config.Bundler.MinUnstakeDelay,
@@ -587,7 +598,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 
 		minSignerBalance, _ := new(big.Int).SetString(config.Bundler.MinBalance[2:], 16)
 		bundleManager := eip4337.NewBundleManager(
-			ctx.Logger,
+			eip4337Logger,
 			provider,
 			signer,
 			entryPoint,
@@ -599,7 +610,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, appCreator ty
 			minSignerBalance,
 			config.Bundler.MaxBundleGas,
 		)
-		executionManager = eip4337.NewExecutionManager(ctx.Logger, provider, entryPoint, bundleManager, mempoolManager, reputationManager, validationManager, eventsManager)
+		executionManager = eip4337.NewExecutionManager(eip4337Logger, provider, entryPoint, bundleManager, mempoolManager, reputationManager, validationManager, eventsManager)
 
 		// it is okay to start bundling interval since the mempool is empty at the moment
 		if config.Bundler.AutoBundle {
