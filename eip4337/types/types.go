@@ -120,34 +120,34 @@ func (op UserOperation) Signature() []byte { return common.CopyBytes(op.signatur
 func (op UserOperation) copy() UserOperation {
 	cpy := UserOperation{
 		sender:               copyAddressPtr(op.sender),
-		nonce:                new(big.Int),
+		nonce:                nil,
 		initCode:             common.CopyBytes(op.initCode),
 		callData:             common.CopyBytes(op.callData),
-		callGasLimit:         new(big.Int),
-		verificationGasLimit: new(big.Int),
-		preVerificationGas:   new(big.Int),
-		maxFeePerGas:         new(big.Int),
-		maxPriorityFeePerGas: new(big.Int),
+		callGasLimit:         nil,
+		verificationGasLimit: nil,
+		preVerificationGas:   nil,
+		maxFeePerGas:         nil,
+		maxPriorityFeePerGas: nil,
 		paymasterAndData:     common.CopyBytes(op.paymasterAndData),
 		signature:            common.CopyBytes(op.signature),
 	}
 	if op.nonce != nil {
-		cpy.nonce.Set(op.nonce)
+		cpy.nonce = new(big.Int).Set(op.nonce)
 	}
 	if op.callGasLimit != nil {
-		cpy.callGasLimit.Set(op.callGasLimit)
+		cpy.callGasLimit = new(big.Int).Set(op.callGasLimit)
 	}
 	if op.verificationGasLimit != nil {
-		cpy.verificationGasLimit.Set(op.verificationGasLimit)
+		cpy.verificationGasLimit = new(big.Int).Set(op.verificationGasLimit)
 	}
 	if op.preVerificationGas != nil {
-		cpy.preVerificationGas.Set(op.preVerificationGas)
+		cpy.preVerificationGas = new(big.Int).Set(op.preVerificationGas)
 	}
 	if op.maxFeePerGas != nil {
-		cpy.maxFeePerGas.Set(op.maxFeePerGas)
+		cpy.maxFeePerGas = new(big.Int).Set(op.maxFeePerGas)
 	}
 	if op.maxPriorityFeePerGas != nil {
-		cpy.maxPriorityFeePerGas.Set(op.maxPriorityFeePerGas)
+		cpy.maxPriorityFeePerGas = new(big.Int).Set(op.maxPriorityFeePerGas)
 	}
 	return cpy
 }
