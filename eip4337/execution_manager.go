@@ -285,12 +285,11 @@ func filterLogs(userOpEvent *entrypoint_interface.EntryPointUserOperationEvent, 
 		if ethLog == nil {
 			continue
 		}
-		if len(ethLog.Topics) < 2 || len(userOpEvent.Raw.Topics) < 2 {
-			// this should never happen, but...
-			return nil, errors.New("no UserOperationEvent in logs")
+		if len(ethLog.Topics) == 0 || len(userOpEvent.Raw.Topics) == 0 {
+			continue
 		}
 		if ethLog.Topics[0].String() == userOpEvent.Raw.Topics[0].String() {
-			if ethLog.Topics[1].String() == userOpEvent.Raw.Topics[1].String() {
+			if len(ethLog.Topics) > 1 && len(userOpEvent.Raw.Topics) > 1 && ethLog.Topics[1].String() == userOpEvent.Raw.Topics[1].String() {
 				endIndex = idx
 			} else {
 				if endIndex == -1 {
