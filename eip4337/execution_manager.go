@@ -70,7 +70,7 @@ func (manager *ExecutionManager) SendUserOperation(userOpArgs types.UserOperatio
 		return common.Hash{}, err
 	}
 
-	validationResult, err := manager.validationManager.ValidateUserOp(userOp, false)
+	validationResult, err := manager.validationManager.ValidateUserOp(userOp, ValidateUserOpOptions{})
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -119,8 +119,18 @@ func (manager *ExecutionManager) attemptBundle(force bool) (SendBundleReturn, er
 }
 
 func (manager *ExecutionManager) EstimateUserOperationGas(userOpArgs types.UserOperationArgs, entryPoint common.Address) (*types.EstimateUserOpGasResult, error) {
-	if userOpArgs.PaymasterAndData == nil {
-		userOpArgs.PaymasterAndData = &hexutil.Bytes{}
+	if userOpArgs.Sender == nil {
+		userOpArgs.Sender = &common.Address{}
+	}
+	if userOpArgs.Nonce == nil {
+		// FIXME: try to get sender's nonce so that validation wont fail
+		userOpArgs.Nonce = (*hexutil.Big)(new(big.Int).SetInt64(0))
+	}
+	if userOpArgs.InitCode == nil {
+		userOpArgs.InitCode = &hexutil.Bytes{}
+	}
+	if userOpArgs.CallGasLimit == nil {
+		userOpArgs.CallGasLimit = (*hexutil.Big)(new(big.Int).SetInt64(0))
 	}
 	if userOpArgs.MaxFeePerGas == nil {
 		userOpArgs.MaxFeePerGas = (*hexutil.Big)(new(big.Int).SetInt64(0))
@@ -134,9 +144,20 @@ func (manager *ExecutionManager) EstimateUserOperationGas(userOpArgs types.UserO
 	if userOpArgs.VerificationGasLimit == nil {
 		userOpArgs.VerificationGasLimit = (*hexutil.Big)(new(big.Int).SetInt64(1000000))
 	}
+	if userOpArgs.PaymasterAndData == nil {
+		userOpArgs.PaymasterAndData = &hexutil.Bytes{}
+	}
+	if userOpArgs.Signature == nil {
+		bz := newDummyBytesSliceWithValue(DefaultGasOverheads().SigSize, 1)
+		userOpArgs.Signature = (*hexutil.Bytes)(&bz)
+	}
 
 	userOp := types.NewUserOperation(userOpArgs)
-	validationResult, err := manager.validationManager.ValidateUserOp(userOp, false)
+	validationResult, err := manager.validationManager.ValidateUserOp(userOp, ValidateUserOpOptions{
+		SkipCheckStakes:     true,
+		SkipCheckSignature:  true,
+		SkipCheckExpiration: true,
+	})
 	if err != nil {
 		return nil, err
 	}

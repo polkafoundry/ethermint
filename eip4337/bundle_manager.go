@@ -322,7 +322,7 @@ func (manager *BundleManager) createBundle() []types.UserOperation {
 		}
 
 		// re-validate UserOp. no need to check stake, since it cannot be reduced between first and 2nd validation
-		validationResult, err := manager.validationManager.ValidateUserOp(entry.UserOp, false)
+		validationResult, err := manager.validationManager.ValidateUserOp(entry.UserOp, ValidateUserOpOptions{})
 		if err != nil {
 			manager.logger.Debug("failed 2nd validation:", "sender", entry.UserOp.Sender(), "nonce", entry.UserOp.Nonce(), "err", err.Error())
 			manager.mempoolManager.RemoveUserOp(entry.UserOp)

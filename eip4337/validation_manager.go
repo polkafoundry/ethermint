@@ -14,7 +14,7 @@ import (
 )
 
 type IValidationManager interface {
-	ValidateUserOp(op types.UserOperation, checkStakes bool) (ValidationResult, error)
+	ValidateUserOp(op types.UserOperation, options ValidateUserOpOptions) (ValidationResult, error)
 	ValidateUserOpBasic(op types.UserOperation, entryPointAddress common.Address, requireSignature bool, requireGasParams bool) error
 }
 
@@ -105,7 +105,13 @@ type AggregatorStakeInfo struct {
 	StakeInfo        StakeInfo
 }
 
-func (manager *ValidationManager) ValidateUserOp(op types.UserOperation, checkStakes bool) (ValidationResult, error) {
+type ValidateUserOpOptions struct {
+	SkipCheckStakes     bool
+	SkipCheckSignature  bool
+	SkipCheckExpiration bool
+}
+
+func (manager *ValidationManager) ValidateUserOp(op types.UserOperation, options ValidateUserOpOptions) (ValidationResult, error) {
 	if manager.unsafe {
 		// FIXME: implement me
 		return ValidationResult{}, NewRPCError(ErrorCodeUnknown, "unsafe validation manager not implemented", nil)
@@ -116,7 +122,7 @@ func (manager *ValidationManager) ValidateUserOp(op types.UserOperation, checkSt
 		return ValidationResult{}, err
 	}
 
-	if res.ReturnInfo.SigFailed {
+	if !options.SkipCheckSignature && res.ReturnInfo.SigFailed {
 		return ValidationResult{}, NewRPCError(
 			ErrorCodeInvalidSignature,
 			"invalid UserOp signature or paymaster signature",
@@ -126,7 +132,7 @@ func (manager *ValidationManager) ValidateUserOp(op types.UserOperation, checkSt
 
 	// FIXME: use config instead?
 	now := uint64(time.Now().Unix())
-	if res.ReturnInfo.ValidAfter > now || res.ReturnInfo.ValidUntil < now+30 {
+	if !options.SkipCheckExpiration && (res.ReturnInfo.ValidAfter > now || res.ReturnInfo.ValidUntil < now+30) {
 		// FIXME: The data field SHOULD contain a paymaster value, if this error was triggered by the paymaster
 		return ValidationResult{}, NewRPCError(
 			ErrorCodeExpiresShortly,
@@ -138,7 +144,7 @@ func (manager *ValidationManager) ValidateUserOp(op types.UserOperation, checkSt
 		)
 	}
 
-	if res.AggregatorInfo.Address != nil {
+	if !options.SkipCheckStakes && res.AggregatorInfo.Address != nil {
 		err = manager.reputationManager.CheckStake("aggregator", res.AggregatorInfo)
 		if err != nil {
 			return ValidationResult{}, err
