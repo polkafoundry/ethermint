@@ -179,7 +179,7 @@ type UserOperationReceipt struct {
 	Sender        *common.Address   `json:"sender,omitempty"`
 	Nonce         *hexutil.Big      `json:"nonce,omitempty"`
 	Paymaster     *common.Address   `json:"paymaster,omitempty"`
-	ActualGasCode *hexutil.Big      `json:"actualGasCode,omitempty"`
+	ActualGasCost *hexutil.Big      `json:"actualGasCost,omitempty"`
 	ActualGasUsed *hexutil.Big      `json:"actualGasUsed,omitempty"`
 	Success       bool              `json:"success,omitempty"`
 	Reason        *string           `json:"reason,omitempty"`

@@ -286,7 +286,7 @@ func (manager *ExecutionManager) GetUserOperationReceipt(userOpHash common.Hash)
 		Sender:        &evt.Sender,
 		Nonce:         (*hexutil.Big)(evt.Nonce),
 		Paymaster:     &evt.Paymaster,
-		ActualGasCode: (*hexutil.Big)(evt.ActualGasCost),
+		ActualGasCost: (*hexutil.Big)(evt.ActualGasCost),
 		ActualGasUsed: (*hexutil.Big)(evt.ActualGasUsed),
 		Success:       evt.Success,
 		Reason:        nil,
