@@ -36,6 +36,13 @@ cat $HOME/.ethermintd/config/genesis.json | jq '.app_state["mint"]["params"]["mi
 # Set gas limit in genesis
 cat $HOME/.ethermintd/config/genesis.json | jq '.consensus_params["block"]["max_gas"]="20000000"' > $HOME/.ethermintd/config/tmp_genesis.json && mv $HOME/.ethermintd/config/tmp_genesis.json $HOME/.ethermintd/config/genesis.json
 
+cat $HOME/.ethermintd/config/genesis.json | jq '.app_state["evm"]["params"]["allow_unprotected_txs"]=true' > $HOME/.ethermintd/config/tmp_genesis.json && mv $HOME/.ethermintd/config/tmp_genesis.json $HOME/.ethermintd/config/genesis.json
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i '' 's/^timeout_commit = .*/timeout_commit = "1s"/g' $HOME/.ethermintd/config/config.toml
+  else
+    sed -i 's/^timeout_commit = .*/timeout_commit = "1s"/g' $HOME/.ethermintd/config/config.toml
+fi
+
 # Allocate genesis accounts (cosmos formatted addresses)
 ethermintd add-genesis-account $KEY 100000000000000000000000000aphoton --keyring-backend $KEYRING
 

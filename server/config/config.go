@@ -81,6 +81,7 @@ type Config struct {
 	EVM     EVMConfig     `mapstructure:"evm"`
 	JSONRPC JSONRPCConfig `mapstructure:"json-rpc"`
 	TLS     TLSConfig     `mapstructure:"tls"`
+	Relayer RelayerConfig `mapstructure:"relayer"`
 }
 
 // EVMConfig defines the application configuration values for the EVM.
@@ -168,6 +169,7 @@ func AppConfig(denom string) (string, interface{}) {
 		EVM:     *DefaultEVMConfig(),
 		JSONRPC: *DefaultJSONRPCConfig(),
 		TLS:     *DefaultTLSConfig(),
+		Relayer: *DefaultRelayerConfig(),
 	}
 
 	customAppTemplate := config.DefaultConfigTemplate + DefaultConfigTemplate
@@ -182,6 +184,7 @@ func DefaultConfig() *Config {
 		EVM:     *DefaultEVMConfig(),
 		JSONRPC: *DefaultJSONRPCConfig(),
 		TLS:     *DefaultTLSConfig(),
+		Relayer: *DefaultRelayerConfig(),
 	}
 }
 
@@ -346,6 +349,15 @@ func GetConfig(v *viper.Viper) (Config, error) {
 			CertificatePath: v.GetString("tls.certificate-path"),
 			KeyPath:         v.GetString("tls.key-path"),
 		},
+		Relayer: RelayerConfig{
+			Enable:          v.GetBool("relayer.enable"),
+			Address:         v.GetString("relayer.address"),
+			SenderAddresses: v.GetStringSlice("relayer.sender-addresses"),
+			RefundAddresses: v.GetStringSlice("relayer.refund-addresses"),
+			RefundTokens:    v.GetStringSlice("relayer.refund-tokens"),
+			MinGasPrices:    v.GetIntSlice("relayer.min-gas-prices"), // viper does not have GetInt64Slice, guess no one uses 32-bit operating system any more right?
+			GasMultiplier:   v.GetFloat64("relayer.gas-multiplier"),
+		},
 	}, nil
 }
 
@@ -372,5 +384,84 @@ func (c Config) ValidateBasic() error {
 		return errorsmod.Wrapf(errortypes.ErrAppConfig, "invalid tls config value: %s", err.Error())
 	}
 
+	if err := c.Relayer.Validate(); err != nil {
+		return errorsmod.Wrapf(errortypes.ErrAppConfig, "invalid relayer config value: %s", err.Error())
+	}
+
 	return c.Config.ValidateBasic()
+}
+
+// ======================= account abstraction: relayer =======================
+
+type RelayerConfig struct {
+	Enable          bool     `mapstructure:"enable"`
+	Address         string   `mapstructure:"address"`
+	SenderAddresses []string `mapstructure:"sender-addresses"`
+	RefundAddresses []string `mapstructure:"refund-addresses"`
+	RefundTokens    []string `mapstructure:"refund-tokens"`
+	MinGasPrices    []int    `mapstructure:"min-gas-prices"`
+	GasMultiplier   float64  `mapstructure:"gas-multiplier"`
+}
+
+func DefaultRelayerConfig() *RelayerConfig {
+	return &RelayerConfig{
+		Enable:          false,
+		Address:         "0x0000000000000000000000000000000000000000",
+		SenderAddresses: []string{},
+		RefundAddresses: []string{},
+		RefundTokens:    []string{"0x0000000000000000000000000000000000000000"},
+		MinGasPrices:    []int{0},
+		GasMultiplier:   1,
+	}
+}
+
+func (c RelayerConfig) Validate() error {
+	if c.Enable {
+		if len(c.SenderAddresses) == 0 {
+			return errors.New("cannot enable relayer without defining any sender address")
+		}
+		if len(c.RefundAddresses) == 0 {
+			return errors.New("cannot enable relayer without defining any refund address")
+		}
+		if len(c.RefundTokens) == 0 {
+			return errors.New("cannot enable relayer without defining any refund token")
+		}
+	}
+
+	if hasDuplicate(c.SenderAddresses) {
+		return errors.New("duplication found in senderAddresses")
+	}
+	if hasDuplicate(c.RefundAddresses) {
+		return errors.New("duplication found in refundAddresses")
+	}
+	if hasDuplicate(c.RefundTokens) {
+		return errors.New("duplication found in refundTokens")
+	}
+
+	if len(c.MinGasPrices) != len(c.RefundTokens) {
+		return errors.New("refund tokens and min gas prices length not match")
+	}
+
+	for _, gasPrice := range c.MinGasPrices {
+		if gasPrice < 0 {
+			return errors.New("relayer min gas price cannot be negative")
+		}
+	}
+
+	if c.GasMultiplier < 0 {
+		return errors.New("relayer gas multiplier cannot be negative")
+	}
+
+	return nil
+}
+
+func hasDuplicate(arr []string) bool {
+	m := make(map[string]struct{})
+	for _, a := range arr {
+		if _, ok := m[a]; ok {
+			return true
+		}
+		m[a] = struct{}{}
+	}
+	return false
 }

@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
@@ -43,12 +44,15 @@ import (
 	pvm "github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/rpc/client/local"
+	rpcclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 	dbm "github.com/tendermint/tm-db"
 
 	"github.com/cosmos/cosmos-sdk/server/rosetta"
 	crgserver "github.com/cosmos/cosmos-sdk/server/rosetta/lib/server"
 
+	"github.com/ethereum/go-ethereum/common"
 	ethmetricsexp "github.com/ethereum/go-ethereum/metrics/exp"
+	ethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	errorsmod "cosmossdk.io/errors"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -62,7 +66,10 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/evmos/ethermint/indexer"
+	"github.com/evmos/ethermint/relaying"
+	"github.com/evmos/ethermint/rpc/backend"
 	ethdebug "github.com/evmos/ethermint/rpc/namespaces/ethereum/debug"
+	rpcfilters "github.com/evmos/ethermint/rpc/namespaces/ethereum/eth/filters"
 	"github.com/evmos/ethermint/server/config"
 	srvflags "github.com/evmos/ethermint/server/flags"
 	ethermint "github.com/evmos/ethermint/types"
@@ -219,6 +226,14 @@ which accepts a path for the resulting pprof file.
 
 	cmd.Flags().Uint64(server.FlagStateSyncSnapshotInterval, 0, "State sync snapshot interval")
 	cmd.Flags().Uint32(server.FlagStateSyncSnapshotKeepRecent, 2, "State sync snapshot to keep")
+
+	cmd.Flags().Bool(srvflags.RelayerEnable, false, "Defines if node should be run as a relayer")
+	cmd.Flags().String(srvflags.RelayerAddress, "0x0000000000000000000000000000000000000000", "Defines address of RelayerManager contract")
+	cmd.Flags().StringSlice(srvflags.RelayerSenderAddresses, []string{}, "Addresses of keys which are used to sign relay transactions")
+	cmd.Flags().StringSlice(srvflags.RelayerRefundAddresses, []string{}, "Addresses that receive refund tokens from relay transactions")
+	cmd.Flags().StringSlice(srvflags.RelayerRefundTokens, []string{"0x0000000000000000000000000000000000000000"}, "Addresses of tokens that can be used when performing refund in relay transactions")
+	cmd.Flags().IntSlice(srvflags.RelayerMinGasPrices, []int{0}, "Defines the minimum gas prices corresponding with the refund tokens that a relayer is willing to accept for processing a relay call")
+	cmd.Flags().Float64(srvflags.RelayerGasMultiplier, 1, "Multiplier when sending relay transaction after estimating gas")
 
 	// add support for all Tendermint-specific command line options
 	tcmd.AddNodeFlags(cmd)
@@ -549,6 +564,71 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 			}()
 		}
 	}
+	var (
+		additionalAPIs []ethrpc.API
+		relayer        relaying.IRelayer
+	)
+
+	if config.Relayer.Enable {
+		relayerLogger := ctx.Logger.With("extension", "relayer")
+		relayerAddress := common.HexToAddress(config.Relayer.Address)
+		evmBackend := backend.NewBackend(ctx, relayerLogger, clientCtx, config.JSONRPC.AllowUnprotectedTxs, idxer)
+		provider := relaying.NewProvider(relayerLogger, evmBackend)
+		keyStore := relaying.NewKeyStore(clientCtx.Keyring, evmBackend)
+		tmWsClient := ConnectTmWS(
+			cfg.RPC.ListenAddress,
+			"/websocket",
+			relayerLogger,
+			rpcclient.ReadWait(0),
+			rpcclient.WriteWait(0),
+			rpcclient.PingPeriod(5*time.Second),
+		)
+		eventsSystem := rpcfilters.NewEventSystem(relayerLogger, tmWsClient)
+		localClient := relaying.NewLocalClient(relayerLogger, eventsSystem, evmBackend)
+
+		parseAddressesFn := func(arr []string) []common.Address {
+			parsed := make([]common.Address, len(arr))
+			for i, a := range arr {
+				parsed[i] = common.HexToAddress(a)
+			}
+			return parsed
+		}
+
+		parseBigIntFn := func(arr []int) []*big.Int {
+			parsed := make([]*big.Int, len(arr))
+			for i, a := range arr {
+				parsed[i] = new(big.Int).SetInt64(int64(a))
+			}
+			return parsed
+		}
+
+		relayerConfig := relaying.RelayerConfig{
+			Address:                relayerAddress,
+			SenderAddresses:        parseAddressesFn(config.Relayer.SenderAddresses),
+			AllowedRefundAddresses: parseAddressesFn(config.Relayer.RefundAddresses),
+			AllowedRefundTokens:    parseAddressesFn(config.Relayer.RefundTokens),
+			MinGasPrices:           parseBigIntFn(config.Relayer.MinGasPrices),
+			GasMultiplier:          config.Relayer.GasMultiplier,
+		}
+
+		relayer, err = relaying.NewRelayer(
+			relayerLogger,
+			relayerConfig,
+			localClient,
+			provider,
+			keyStore,
+		)
+		if err != nil {
+			return err
+		}
+
+		additionalAPIs = append(additionalAPIs, ethrpc.API{
+			Namespace: "eth",
+			Version:   "1.0",
+			Service:   relaying.NewPublicAPI(relayer),
+			Public:    true,
+		})
+	}
 
 	var (
 		httpSrv     *http.Server
@@ -565,7 +645,7 @@ func startInProcess(ctx *server.Context, clientCtx client.Context, opts StartOpt
 
 		tmEndpoint := "/websocket"
 		tmRPCAddr := cfg.RPC.ListenAddress
-		httpSrv, httpSrvDone, err = StartJSONRPC(ctx, clientCtx, tmRPCAddr, tmEndpoint, &config, idxer)
+		httpSrv, httpSrvDone, err = StartJSONRPC(ctx, clientCtx, tmRPCAddr, tmEndpoint, &config, idxer, additionalAPIs...)
 		if err != nil {
 			return err
 		}

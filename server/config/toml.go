@@ -103,4 +103,34 @@ certificate-path = "{{ .TLS.CertificatePath }}"
 
 # Key path defines the key.pem file path for the TLS configuration.
 key-path = "{{ .TLS.KeyPath }}"
+
+###############################################################################
+###                          Relayer Configuration                          ###
+###############################################################################
+
+[relayer]
+
+# Enable defines if node should be run as a relayer.
+enable = {{ .Relayer.Enable }}
+
+# Address defines address of RelayerManager contract
+address = "{{ .Relayer.Address }}"
+
+# SenderAddresses defines addresses of keys which are used to sign relay transactions.
+sender-addresses = "{{range $index, $elmt := .Relayer.SenderAddresses}}{{if $index}},{{$elmt}}{{else}}{{$elmt}}{{end}}{{end}}"
+
+# RefundAddresses defines addresses that receive refund tokens from relay transactions.
+refund-addresses = "{{range $index, $elmt := .Relayer.RefundAddresses}}{{if $index}},{{$elmt}}{{else}}{{$elmt}}{{end}}{{end}}"
+
+# RefundTokens defines addresses of tokens that can be used when performing refund in relay transactions.
+# Zero address token means the native token of the chain.
+refund-tokens = "{{range $index, $elmt := .Relayer.RefundTokens}}{{if $index}},{{$elmt}}{{else}}{{$elmt}}{{end}}{{end}}"
+
+# MinGasPrices defines the minimum gas prices corresponding with the refund tokens that a relayer is willing to accept
+# for processing a relay call.
+min-gas-prices = "{{range $index, $elmt := .Relayer.MinGasPrices}}{{if $index}},{{$elmt}}{{else}}{{$elmt}}{{end}}{{end}}"
+
+# GasMultiplier is the multiplier when sending relay transaction after estimating gas.
+# gas = gasMultiplier * estimatedGas
+gas-multiplier = "{{ .Relayer.GasMultiplier }}"
 `

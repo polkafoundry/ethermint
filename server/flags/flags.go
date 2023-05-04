@@ -71,6 +71,16 @@ const (
 	JSONRPCEnableMetrics = "metrics"
 )
 
+const (
+	RelayerEnable          = "relayer.enable"
+	RelayerAddress         = "relayer.address"
+	RelayerSenderAddresses = "relayer.sender-addresses"
+	RelayerRefundAddresses = "relayer.refund-addresses"
+	RelayerRefundTokens    = "relayer.refund-tokens"
+	RelayerMinGasPrices    = "relayer.min-gas-prices"
+	RelayerGasMultiplier   = "relayer.gas-multiplier"
+)
+
 // EVM flags
 const (
 	EVMTracer         = "evm.tracer"
